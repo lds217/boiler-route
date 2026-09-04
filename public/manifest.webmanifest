@@ -1,0 +1,17 @@
+{
+  "name": "Boiler Route",
+  "short_name": "Boiler Route",
+  "description": "Weather-aware pedestrian routing for Purdue's West Lafayette campus",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#E9E6DE",
+  "theme_color": "#FBFAF6",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

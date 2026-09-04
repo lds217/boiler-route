@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FBFAF6">
+<title>Boiler Route</title>
+<link rel="manifest" href="./manifest.webmanifest">
+</head>
+<body>
+
+<div id="map" role="application" aria-label="Campus map"></div>
+
+<section id="search" aria-label="Route search">
+  <div class="brandline"><b>Boiler Route</b><span class="sun" id="suntext"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="#E2572B"/><g stroke="#E2572B" stroke-width="1.6" stroke-linecap="round"><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></g></svg><span>Loading</span></span></div>
+  <div class="fields">
+    <div class="stack">
+      <div class="sfield" id="f-from"><span class="dot"></span><input id="from" placeholder="Choose starting point" autocomplete="off" spellcheck="false"><button class="clear" data-for="from" aria-label="Clear start">×</button><div class="sugg" id="from-sugg"></div></div>
+      <div class="sfield" id="f-to"><span class="dot d"></span><input id="to" placeholder="Choose destination" autocomplete="off" spellcheck="false"><button class="clear" data-for="to" aria-label="Clear destination">×</button><div class="sugg" id="to-sugg"></div></div>
+    </div>
+    <button class="swap" id="swap" title="Swap" aria-label="Swap start and destination"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v10M1.5 9.5 4 12l2.5-2.5M12 14V4M9.5 6.5 12 4l2.5 2.5"/></svg></button>
+  </div>
+  <div class="quick"><button id="locate">Use my location</button><span>·</span><span>tap the map or a building</span><span style="flex:1"></span><button id="share">Copy link</button></div>
+</section>
+
+<section id="sheet" aria-label="Routes and settings">
+  <div class="handle" id="handle"></div>
+  <div id="loadbox"></div>
+  <div id="planner" hidden>
+    <div class="routes" id="routes"></div>
+    <div class="legend"><span class="in">Inside</span><span class="sh">Outside, shade</span><span class="su">Outside, sun</span></div>
+    <div id="warn"></div>
+
+    <details id="dirbox" open><summary>Directions <span class="cur" id="dircur"></span></summary><ol class="steps" id="steps"></ol></details>
+
+    <details open>
+      <summary>Conditions <span class="cur" id="condcur"></span></summary>
+      <div class="wx" id="wx">Fetching live weather…</div>
+      <label class="toggle"><input type="checkbox" id="manual"> Set temperature, wind and clouds manually</label>
+      <div class="row2">
+        <div class="field"><label for="date">Date</label><input type="date" id="date"></div>
+        <div class="field"><label for="tempn">Temperature</label>
+          <select id="tempn" disabled>
+            <option value="0">0 °F</option><option value="10">10 °F</option><option value="20">20 °F</option><option value="30">30 °F</option><option value="40">40 °F</option>
+            <option value="50">50 °F</option><option value="60">60 °F</option><option value="70">70 °F</option><option value="78">78 °F</option>
+            <option value="84" selected>84 °F</option><option value="90">90 °F</option><option value="96">96 °F</option><option value="102">102 °F</option>
+          </select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="wind">Wind</label><select id="wind" disabled><option value="calm">Calm</option><option value="breezy" selected>Breezy</option><option value="windy">Windy</option></select></div>
+        <div class="field"><label for="cloud">Sky</label><select id="cloud" disabled><option value="0" selected>Clear</option><option value="40">Partly cloudy</option><option value="80">Overcast</option></select></div>
+      </div>
+      <div class="ctl"><label for="time">Time of day</label><output id="timeout" for="time"></output><input type="range" id="time" min="0" max="1425" step="15"></div>
+      <div class="ctl"><label for="comfort">How much detour for comfort</label><output id="comfortout" for="comfort"></output>
+        <input type="range" id="comfort" min="0" max="100" step="5" value="70"><div class="ends"><span>Fastest</span><span>Most comfortable</span></div></div>
+      <label class="toggle"><input type="checkbox" id="nojaywalk" checked> Only cross streets at mapped crossings</label>
+      <label class="toggle"><input type="checkbox" id="stepfree"> Step-free route (no stairs, no doors tagged wheelchair=no)</label>
+      <div class="row2">
+        <div class="field"><label for="basemap">Basemap</label><select id="basemap"><option value="builtin" selected>Built-in (from OSM data)</option><option value="tiles">OSM tiles</option><option value="none">None</option></select></div>
+        <div class="field"><label for="shownet" style="visibility:hidden">Network</label><label class="toggle" style="padding:9px 0"><input type="checkbox" id="shownet"> Walkable network</label></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Where the data comes from</summary>
+      <ul class="data">
+        <li><b>OpenStreetMap:</b> building outlines and names, sidewalks and paths, entrances, trees, ground cover, and footways tagged as tunnel, bridge or indoor corridor. Small gaps between mapped sidewalks are closed automatically. Data is bundled and refreshed weekly; Overpass is only queried when no bundle is present.</li>
+        <li><b>Open-Meteo, live:</b> temperature, wind and cloud cover for the chosen date and hour. Cloud cover reduces the sun term.</li>
+        <li><b>Computed:</b> sun position, shadows from building and tree heights, feels-like temperature per segment, comfort-weighted routing, open-hours blocking, turn-by-turn directions.</li>
+        <li><b>Comfort model:</b> walking time × (1 + slider × stress), where stress follows the UTCI thermal-stress bands of the segment's feels-like temperature. Direct sun adds up to 10 °C at high sun. Indoors counts as 22 °C. Sources in the source comments.</li>
+        <li><b>Doors:</b> OSM entrances are used with their meaning: main and secondary entrances preferred, service doors penalised, exit-only and entrance-only doors are one-way, emergency exits and private doors are never used, wheelchair=no doors are skipped in step-free mode. Buildings with fewer than two usable tagged entrances get assumed doors where sidewalks meet the wall, flagged in the directions.</li>
+        <li><b>Streets:</b> the route never crosses a primary to residential street except on a mapped crossing (signals cost more waiting time than a marked crossing). Footways drawn across a street with no crossing node are flagged as unmarked and excluded by default.</li>
+        <li><b>Assumed:</b> height = levels × 3.5 m, else 12 m. Trees 10 m. Hours 7 am to 10 pm unless OSM has opening_hours (simple weekday rules are parsed).</li>
+        <li><b>Not in OSM:</b> most Purdue skywalks and subwalks. Add them to <b>campus-overrides.json</b> after walking them.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<script type="module" src="/src/ui/main.ts"></script>
+</body>
+</html>

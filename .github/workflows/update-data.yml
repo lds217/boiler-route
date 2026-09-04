@@ -1,0 +1,25 @@
+name: update-data
+on:
+  schedule:
+    - cron: '17 9 * * 1' # weekly, Monday 09:17 UTC (odd minute per Overpass etiquette)
+  workflow_dispatch:
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/update-data.mjs
+        env:
+          BOILER_ROUTE_CONTACT: ${{ vars.BOILER_ROUTE_CONTACT }}
+      - name: commit on change
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add public/boiler-route-data.json
+          git diff --cached --quiet || git commit -m "data: weekly OSM extract refresh"
+          git push

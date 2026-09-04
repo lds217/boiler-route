@@ -68,6 +68,11 @@ export const overpassQuery = (bbox: [number, number, number, number]): string =>
   node["door"](${bbox});
   node["indoor"="door"](${bbox});
   node["highway"="crossing"](${bbox});
+  way["landuse"](${bbox});
+  way["leisure"](${bbox});
+  way["natural"](${bbox});
+  way["amenity"="parking"](${bbox});
+  way["waterway"](${bbox});
 );
 out body;
 >;
