@@ -57,6 +57,7 @@ function overrideFor(overrides: Record<string, BuildingOverride>, osmId: number,
 export function extractBuildings(
   idx: OsmIndex, proj: Projection, weekday: number,
   overrides: Record<string, BuildingOverride> = {},
+  lidarHeights: Record<string, number> = {},
 ): Building[] {
   const buildings: Building[] = [];
   const add = (id: number, tags: OsmTags, ring: RingPoint[] | undefined) => {
@@ -65,14 +66,17 @@ export function extractBuildings(
     const name = tags.name || tags['addr:housename'] || tags.description || null;
     const abbr = tags.short_name || tags.ref || (name ? initials(name) : '#' + id);
     const levels = parseFloat(tags['building:levels']);
-    const height = parseFloat(tags.height) || (levels ? levels * LEVEL_HEIGHT : DEFAULT_BUILDING_HEIGHT);
+    const lidar = lidarHeights[String(id)];
+    const height = lidar || parseFloat(tags.height) || (levels ? levels * LEVEL_HEIGHT : DEFAULT_BUILDING_HEIGHT);
+    const heightSource = lidar ? 'lidar' as const
+      : tags.height || levels ? 'osm' as const : 'assumed' as const;
     const ov = overrideFor(overrides, id, name);
     const hrs = ov?.hours ?? parseHours(tags.opening_hours, weekday);
     const indoorC = ov?.conditioned === false ? null : ov?.indoorC ?? INDOOR_C;
     buildings.push({
       id: 'b' + id, osmId: id, name: name || `Unnamed building ${id}`, named: !!name, abbr,
       ring, bbox: bboxOf(ring), c: centroid(ring), height,
-      heightTagged: !!(tags.height || levels),
+      heightTagged: heightSource !== 'assumed', heightSource,
       hours: hrs || DEFAULT_HOURS, hoursTagged: !!hrs, hoursOverride: ov?.hours, tags,
       doorsTagged: 0, doorsAssumed: 0, doorsSkipped: [], doorCount: 0, indoorC,
     });

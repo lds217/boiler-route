@@ -7,13 +7,15 @@ import {
 } from '../geometry';
 import { doorSpec, extractBuildings, extractTrees, indexOsm } from '../osm/parse';
 import type {
-  Building, CampusOverrides, Crossing, DoorSpec, Edge, EdgeKind, GraphNode, LinkKind, Model,
-  OsmData, OsmTags, StreetSeg, XY,
+  Building, CampusOverrides, Crossing, DoorSpec, Edge, EdgeKind, GraphNode, HeightsData, LinkKind,
+  Model, OsmData, OsmTags, StreetSeg, Tree, XY,
 } from '../types';
 
 export interface BuildOptions {
   weekday: number;
   overrides?: Partial<CampusOverrides>;
+  /** NDHM lidar heights + canopy from scripts/heights.py. */
+  heights?: HeightsData | null;
 }
 
 const walkableTags = (t: OsmTags): boolean => {
@@ -64,8 +66,22 @@ export class StreetIndex {
 export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): Model {
   const idx = indexOsm(osm);
   const overrides = opts.overrides ?? {};
-  const buildings = extractBuildings(idx, proj, opts.weekday, overrides.buildings ?? {});
-  const trees = extractTrees(idx, proj);
+  const buildings = extractBuildings(idx, proj, opts.weekday, overrides.buildings ?? {}, opts.heights?.buildings ?? {});
+  // Lidar canopy strictly supersedes OSM tree points as shade casters.
+  const trees = opts.heights?.canopy?.length
+    ? opts.heights.canopy.map((c, i): Tree => {
+        const p = proj.xy(c.lat, c.lon);
+        const ring: XY[] = [];
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * 2 * Math.PI;
+          ring.push({ x: p.x + c.r * Math.cos(a), y: p.y + c.r * Math.sin(a) });
+        }
+        return {
+          id: 'c' + i, c: p, r: c.r, height: c.h, ring,
+          bbox: { x0: p.x - c.r, y0: p.y - c.r, x1: p.x + c.r, y1: p.y + c.r },
+        };
+      })
+    : extractTrees(idx, proj);
   const bInside = (p: XY): Building | undefined =>
     buildings.find((b) => p.x >= b.bbox.x0 && p.x <= b.bbox.x1 && p.y >= b.bbox.y0 && p.y <= b.bbox.y1 && pointInRing(p, b.ring));
 

@@ -18,7 +18,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // weather + Overpass go to the network
 
-  if (url.pathname.endsWith('boiler-route-data.json')) {
+  if (url.pathname.endsWith('boiler-route-data.json') || url.pathname.endsWith('campus-heights.json')) {
     // stale-while-revalidate
     e.respondWith(
       caches.open(CACHE).then(async (c) => {

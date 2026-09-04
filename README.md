@@ -74,10 +74,26 @@ campus-overrides.json     hand-maintained: manual skywalk/subwalk links,
   once NDHM heights land; the module boundaries (`osm/parse` → `graph/build`)
   are already cut so the build step can move server-side unchanged.
 
+## Lidar heights and canopy
+
+`scripts/heights.py` (run with `npm run heights`, needs [uv](https://docs.astral.sh/uv/))
+reads Purdue 2018 NDHM lidar tiles (`*_ndhm.tif` in the repo root, from the
+Purdue Geospatial Data Science Lab portal; NAD83(HARN) Indiana West ftUS, 5 ft
+cells) and writes `public/campus-heights.json`:
+
+- per-building height = 90th-percentile NDHM inside the footprint (§2 of the
+  brief) — replaces the 12 m default and OSM levels guesses;
+- tree canopy = cells ≥ 4 m outside footprints, aggregated into ~18 m circles —
+  replaces OSM tree points as shade casters.
+
+The app picks the file up automatically at boot; building popups then show
+"(lidar)" as the height source. Re-run after refreshing the OSM extract so new
+footprints get measured. The `.tif` tiles are not committed; the generated
+JSON is.
+
 ## Known limitations (§13 of the brief still applies)
 
-Heights default to 12 m without OSM tags (NDHM zonal stats are the planned
-upgrade); real door schedules are the biggest usability risk; skywalks/subwalks
+Real door schedules are the biggest usability risk; skywalks/subwalks
 must be hand-traced into `campus-overrides.json` and walked before setting
 `verified: true`; not every building is conditioned — set
 `{"conditioned": false}` or `{"indoorC": …}` per building in the overrides.

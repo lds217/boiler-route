@@ -25,6 +25,7 @@ export interface Building {
   c: XY; // centroid
   height: number; // m
   heightTagged: boolean;
+  heightSource: 'lidar' | 'osm' | 'assumed';
   hours: [number, number]; // decimal hours [open, close)
   hoursTagged: boolean;
   /** From campus-overrides.json; beats OSM opening_hours. */
@@ -148,6 +149,15 @@ export interface CampusOverrides {
   manualLinks: ManualLink[];
   /** Keyed by building name or OSM id (as string). */
   buildings: Record<string, BuildingOverride>;
+}
+
+/** Output of scripts/heights.py: NDHM lidar heights and canopy circles. */
+export interface CanopyCircle { lat: number; lon: number; r: number; h: number }
+export interface HeightsData {
+  _generated?: string;
+  _source?: string;
+  buildings: Record<string, number>; // OSM id → height in m (90th percentile NDHM)
+  canopy: CanopyCircle[];
 }
 
 export type Place =

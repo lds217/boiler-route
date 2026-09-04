@@ -15,7 +15,7 @@ import { loadBundledData, loadOverpass } from '../overpass';
 import { buildContext, dijkstra, summarize } from '../routing';
 import { computeShade } from '../shade';
 import { sunPosition } from '../sun';
-import type { CampusOverrides, Edge, Model, OsmData, Place, RouteContext, Wind } from '../types';
+import type { CampusOverrides, Edge, HeightsData, Model, OsmData, Place, RouteContext, Wind } from '../types';
 import { loadWeather, weatherAt, type WeatherState } from '../weather';
 
 const proj = createProjection(BBOX);
@@ -27,6 +27,7 @@ const STALE_DAYS = 14;
 /* ================= state ================= */
 let model: Model | null = null;
 let rawOsm: OsmData | null = null;
+let heights: HeightsData | null = null;
 let basemap: Basemap | null = null;
 let wx: WeatherState = { ok: false, current: null, hourly: null, fetchedAt: null, err: null };
 let origin: Place | null = null, dest: Place | null = null;
@@ -228,7 +229,7 @@ function setPlace(place: Place, field?: 'from' | 'to') {
   if (field === 'from') origin = place; else dest = place;
   if (place.kind === 'building' && model) {
     const b = model.byId[place.id];
-    setStatus(`<b>${esc(b.name)}</b>: ${b.doorsTagged} tagged entrance${b.doorsTagged === 1 ? '' : 's'}${b.doorsAssumed ? `, ${b.doorsAssumed} assumed` : ''}${b.doorsSkipped.length ? `, ${b.doorsSkipped.length} unusable (${[...new Set(b.doorsSkipped)].join(', ')})` : ''}; height ${Math.round(b.height)} m ${b.heightTagged ? '(OSM)' : '(assumed)'}; hours ${fmtHours(b.hours)} ${b.hoursTagged ? '(OSM)' : '(assumed)'}.`);
+    setStatus(`<b>${esc(b.name)}</b>: ${b.doorsTagged} tagged entrance${b.doorsTagged === 1 ? '' : 's'}${b.doorsAssumed ? `, ${b.doorsAssumed} assumed` : ''}${b.doorsSkipped.length ? `, ${b.doorsSkipped.length} unusable (${[...new Set(b.doorsSkipped)].join(', ')})` : ''}; height ${Math.round(b.height)} m (${b.heightSource === 'lidar' ? 'lidar' : b.heightSource === 'osm' ? 'OSM' : 'assumed'}); hours ${fmtHours(b.hours)} ${b.hoursTagged ? '(OSM)' : '(assumed)'}.`);
   }
   const inp = $<HTMLInputElement>(field);
   inp.value = place.label;
@@ -466,12 +467,13 @@ function renderRoutes() {
 /* ================= boot ================= */
 function start(osm: OsmData, sourceNote?: string) {
   rawOsm = osm;
-  model = buildModel(osm, proj, { weekday: new Date().getDay(), overrides });
+  model = buildModel(osm, proj, { weekday: new Date().getDay(), overrides, heights });
   basemap = extractBasemap(osm, proj);
   const named = model.buildings.filter((b) => b.named);
   if (named.length < 2) { showError(new Error('fewer than two named buildings in this block')); return; }
   drawBasemap(); drawModel(); routeLayer.clearLayers();
   const links = model.edges.filter((e) => e.kind === 'link').length;
+  const lidarN = heights ? model.buildings.filter((b) => b.heightSource === 'lidar').length : 0;
   const src = sourceNote ?? (osm._source ? `from ${osm._source} in ${osm._seconds} s` : 'from the bundled extract');
   let age = '';
   if (osm._fetched) {
@@ -480,7 +482,7 @@ function start(osm: OsmData, sourceNote?: string) {
       ? ` <b>The data is ${days} days old</b> — refresh it with <code>npm run update-data</code> or "Save data for next time".`
       : ` Data is ${days} day${days === 1 ? '' : 's'} old.`;
   }
-  $('loadbox').innerHTML = `<p class="status"><b>${model.buildings.length}</b> buildings (${named.length} named), <b>${model.edges.filter((e) => e.kind === 'outdoor' && !e.connector).length}</b> path segments, <b>${model.trees.length}</b> trees${links ? `, <b>${links}</b> indoor link segments` : ''}, ${model.crossings} mapped crossings, ${model.gapsClosed} sidewalk gaps closed${model.jaywalks ? `, ${model.jaywalks} footways cross a street with no crossing` : ''}, ${src}.${age}</p>
+  $('loadbox').innerHTML = `<p class="status"><b>${model.buildings.length}</b> buildings (${named.length} named), <b>${model.edges.filter((e) => e.kind === 'outdoor' && !e.connector).length}</b> path segments, <b>${model.trees.length}</b> ${heights?.canopy?.length ? 'canopy patches (lidar)' : 'trees'}${lidarN ? `, <b>${lidarN}</b> lidar heights` : ''}${links ? `, <b>${links}</b> indoor link segments` : ''}, ${model.crossings} mapped crossings, ${model.gapsClosed} sidewalk gaps closed${model.jaywalks ? `, ${model.jaywalks} footways cross a street with no crossing` : ''}, ${src}.${age}</p>
   <div class="btnrow" style="margin:0 0 4px"><button class="btn quiet" id="saveosm">Save data for next time</button><label class="btn quiet" style="display:inline-block">Load saved data<input type="file" id="jsonfile2" accept="application/json,.json" style="display:none"></label></div>`;
   $('saveosm').onclick = saveOsm;
   loadFile($<HTMLInputElement>('jsonfile2'));
@@ -498,6 +500,8 @@ function start(osm: OsmData, sourceNote?: string) {
 async function boot(forceOverpass = false) {
   void loadWeather(CAMPUS.lat, CAMPUS.lon).then((state) => { wx = state; if (model) update(); });
   try {
+    if (!heights)
+      heights = await fetch('./campus-heights.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (!forceOverpass) {
       const bundled = await loadBundledData(DATA_URL);
       if (bundled) { start(bundled); return; }

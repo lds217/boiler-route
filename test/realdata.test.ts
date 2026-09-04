@@ -52,6 +52,28 @@ describe.skipIf(!osm)('real Purdue extract', () => {
     }
   });
 
+  const heightsPath = new URL('../public/campus-heights.json', import.meta.url).pathname;
+  let heights: import('../src/types').HeightsData | null = null;
+  try { heights = JSON.parse(readFileSync(heightsPath, 'utf8')); } catch { /* not generated */ }
+
+  it.skipIf(!heights)('applies lidar heights and canopy, and shade stays fast', () => {
+    const m = buildModel(osm!, proj, { weekday: 3, heights });
+    const lidar = m.buildings.filter((b) => b.heightSource === 'lidar');
+    console.log(`lidar heights: ${lidar.length}/${m.buildings.length} buildings, canopy casters: ${m.trees.length}`);
+    expect(lidar.length).toBeGreaterThan(40);
+    for (const b of lidar) { expect(b.height).toBeGreaterThan(2); expect(b.height).toBeLessThan(120); }
+    expect(m.trees.length).toBeGreaterThan(100); // canopy circles replaced OSM tree points
+    const t0 = performance.now();
+    const { sunFrac } = computeShade(m, { alt: Math.PI / 3, bearing: Math.PI });
+    const ms = performance.now() - t0;
+    console.log(`computeShade with ${m.buildings.length + m.trees.length} casters: ${ms.toFixed(0)} ms`);
+    expect(ms).toBeLessThan(2000);
+    // canopy must actually shade something outdoors
+    let shaded = 0, outdoor = 0;
+    for (const e of m.edges) if (e.kind === 'outdoor') { outdoor++; if (sunFrac[e.id] < 1) shaded++; }
+    expect(shaded).toBeGreaterThan(outdoor * 0.05);
+  });
+
   it('every named building with doors is reachable from the first one', () => {
     const named = model.buildings.filter((b) => b.named && b.doorCount > 0);
     const sun = { alt: Math.PI / 3, bearing: Math.PI };
