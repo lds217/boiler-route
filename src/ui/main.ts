@@ -246,11 +246,36 @@ $('swap').onclick = () => {
   }
   drawPins(); update();
 };
+/* live GPS: blue dot + accuracy ring, kept fresh while the app is open */
+let watchId: number | null = null;
+let locDot: L.CircleMarker | null = null;
+let locRing: L.Circle | null = null;
+function showFix(lat: number, lon: number, acc: number) {
+  if (!locDot) {
+    locRing = L.circle([lat, lon], { radius: acc, color: '#1F5FBF', weight: 1, opacity: 0.4, fillColor: '#1F5FBF', fillOpacity: 0.08, interactive: false }).addTo(map);
+    locDot = L.circleMarker([lat, lon], { pane: 'routes', radius: 7, color: '#fff', weight: 2.5, fillColor: '#1F5FBF', fillOpacity: 1, interactive: false }).addTo(map);
+  } else {
+    locDot.setLatLng([lat, lon]);
+    locRing!.setLatLng([lat, lon]).setRadius(acc);
+  }
+}
+function startWatch() {
+  if (watchId !== null || !navigator.geolocation) return;
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => showFix(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+    () => {}, { enableHighAccuracy: true, maximumAge: 5000 });
+}
 function locate() {
   if (!navigator.geolocation) { setStatus('This browser has no location access.'); return; }
+  if (!window.isSecureContext) {
+    setStatus('Location needs a secure page: browsers only allow GPS over <b>https://</b> (or on localhost). Start the server with <code>npm run dev:https</code> and open the https address, accepting the certificate warning once.');
+    return;
+  }
   setStatus('Finding your location…');
   navigator.geolocation.getCurrentPosition((pos) => {
-    const { latitude: lat, longitude: lon } = pos.coords;
+    const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+    showFix(lat, lon, accuracy);
+    startWatch();
     const margin = 0.004;
     if (lat < BBOX[0] - margin || lat > BBOX[2] + margin || lon < BBOX[1] - margin || lon > BBOX[3] + margin) {
       setStatus('You are outside the study area. Widen BBOX in src/constants.ts to include where you are.');
@@ -258,7 +283,8 @@ function locate() {
     }
     const p = pointAt({ lat, lng: lon });
     if (p) { p.label = 'My location'; setPlace(p, 'from'); } else setStatus('No mapped path near your location.');
-  }, (err) => setStatus('Location unavailable: ' + esc(err.message) + '. Try tapping the map instead.'),
+  }, (err) => setStatus('Location unavailable: ' + esc(err.message) +
+    (err.code === 1 ? '. Allow location for this site in your browser settings.' : '. Try tapping the map instead.')),
   { enableHighAccuracy: true, timeout: 10000 });
 }
 $('locate').onclick = locate;
@@ -288,7 +314,20 @@ function readHash() {
   if (o) setPlace(o, 'from');
   if (d) setPlace(d, 'to');
 }
-$('handle').onclick = () => $('sheet').classList.toggle('peek');
+/* bottom sheet: tap toggles, swiping the handle up/down expands/collapses */
+{
+  const sheet = $('sheet'), handle = $('handle');
+  handle.onclick = () => sheet.classList.toggle('peek');
+  let startY = 0;
+  handle.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+  handle.addEventListener('touchend', (e) => {
+    e.preventDefault(); // suppress the synthetic click that would re-toggle
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy > 16) sheet.classList.add('peek');
+    else if (dy < -16) sheet.classList.remove('peek');
+    else sheet.classList.toggle('peek');
+  });
+}
 
 /* ================= conditions ================= */
 for (const id of ['date', 'tempn', 'wind', 'cloud', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk'])
@@ -373,7 +412,12 @@ function update() {
   };
   renderRoutes();
   const pair = src + '>' + dst;
-  if (pair !== lastPair) { lastPair = pair; fitRoute(); }
+  if (pair !== lastPair) {
+    lastPair = pair;
+    fitRoute();
+    // on phones, drop the sheet to a peek so the freshly fitted route is visible
+    if (window.innerWidth < 820) $('sheet').classList.add('peek');
+  }
   writeHash();
 }
 function fitRoute() {
@@ -384,7 +428,7 @@ function fitRoute() {
   const mobile = window.innerWidth < 820;
   map.fitBounds(L.latLngBounds(pts), {
     paddingTopLeft: mobile ? [20, 140] : [440, 40],
-    paddingBottomRight: mobile ? [20, Math.min(window.innerHeight * 0.5, 380)] : [40, 40],
+    paddingBottomRight: mobile ? [20, 170] : [40, 40], // sheet peeks after a new route on phones
     maxZoom: 18,
   });
 }

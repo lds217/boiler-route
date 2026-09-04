@@ -4,8 +4,10 @@
   --shadow:0 1px 2px rgba(0,0,0,.08),0 6px 20px rgba(0,0,0,.08);
 }
 *{box-sizing:border-box}
+html{-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--ground);color:var(--ink);
   font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.35}
+button,select,input,summary,.route,ol.steps li{touch-action:manipulation}
 #map{position:fixed;inset:0;background:var(--ground);z-index:0}
 .leaflet-container{background:var(--ground);font:inherit}
 .leaflet-tooltip.bl{background:transparent;border:0;box-shadow:none;color:var(--ink);font-weight:600;font-size:11px;letter-spacing:.02em;pointer-events:none;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 4px #fff}
@@ -48,9 +50,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
 /* bottom sheet */
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--panel);border-radius:18px 18px 0 0;box-shadow:0 -2px 10px rgba(0,0,0,.06),0 -12px 40px rgba(0,0,0,.08);
-  max-height:58vh;overflow:auto;padding:6px 16px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;transition:max-height .2s}
-#sheet.peek{max-height:118px;overflow:hidden}
-.handle{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 10px;cursor:pointer}
+  max-height:58vh;max-height:58dvh;overflow:auto;padding:6px 16px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;transition:max-height .2s;overscroll-behavior:contain}
+#sheet.peek{max-height:132px;overflow:hidden}
+#sheet.peek #loadbox{display:none} /* peek leads with the route cards */
+.handle{width:56px;height:5px;border-radius:3px;background:var(--line);margin:4px auto 8px;cursor:grab;position:relative}
+.handle::before{content:"";position:absolute;inset:-14px -40px;/* generous touch target */}
 .status{font-size:13px;color:var(--muted);padding:6px 0}.status b{color:var(--ink)}
 .note{font-size:13px;color:var(--muted);margin:4px 0 6px}
 .warn{background:#FFF4E5;border:1px solid #F5D9B0;color:#7A4B00;border-radius:10px;padding:8px 10px;font-size:13px;margin:8px 0 0}
@@ -103,4 +107,25 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
   #sheet{left:16px;right:auto;top:158px;bottom:16px;width:400px;max-height:none;border-radius:18px;padding:10px 18px 18px}
   #sheet.peek{max-height:none;overflow:auto}
   .handle{display:none}
+}
+
+/* phones and other coarse pointers */
+@media (max-width:819px){
+  /* 16px inputs stop iOS Safari from zooming the page on focus */
+  .sfield input,select,input[type=date]{font-size:16px}
+  .sfield input{padding:12px 0}
+  .sugg button{padding:12px}
+  ol.steps li{padding:11px 4px}
+  .btn{padding:11px 14px;min-height:44px}
+  .toggle{padding:9px 0}.toggle input{width:20px;height:20px}
+  .quick{padding-top:8px}
+  .quick button{padding:4px 0}
+  .route{padding:12px}
+  summary{padding:10px 0}
+}
+@media (pointer:coarse){
+  .ctl input[type=range]{height:34px}
+  input[type=range]::-webkit-slider-thumb{width:26px;height:26px}
+  .swap{width:44px;height:44px}
+  .sfield .clear{width:36px;height:36px;font-size:20px}
 }

@@ -1,7 +1,7 @@
 /* Boiler Route service worker: cache-first for the app shell, so the campus
    works offline once visited. The OSM data bundle uses stale-while-revalidate
    so a weekly refresh lands without blocking startup. */
-const CACHE = 'boiler-route-v1';
+const CACHE = 'boiler-route-v2';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./'])).then(() => self.skipWaiting()));
@@ -30,7 +30,23 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // app shell: cache-first, fill the cache from the network
+  if (e.request.mode === 'navigate') {
+    // the HTML shell: network-first so deploys land, cache fallback for offline
+    e.respondWith(
+      caches.open(CACHE).then(async (c) => {
+        try {
+          const r = await fetch(e.request);
+          if (r.ok) c.put(e.request, r.clone());
+          return r;
+        } catch {
+          return (await c.match(e.request)) || (await c.match('./'));
+        }
+      }),
+    );
+    return;
+  }
+
+  // hashed assets: cache-first, fill the cache from the network
   e.respondWith(
     caches.open(CACHE).then(async (c) => {
       const cached = await c.match(e.request);
