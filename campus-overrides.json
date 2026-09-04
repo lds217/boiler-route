@@ -1,0 +1,5 @@
+{
+  "$comment": "Hand-maintained campus knowledge merged at build time. Keep hand-verified additions out of the OSM data file (ODbL). manualLinks match by OSM way id (number) or exact building name; kind is 'skywalk' or 'subwalk'; verified:false shows a warning when the link is used. buildings is keyed by building name or OSM id, with {conditioned, indoorC, hours}.",
+  "manualLinks": [],
+  "buildings": {}
+}
