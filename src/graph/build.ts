@@ -5,7 +5,7 @@ import {
 import {
   bearingDeg, closestOnRing, compass8, dist, distToRing, pointInRing, segIntersects, type Projection,
 } from '../geometry';
-import { doorSpec, extractBuildings, extractTrees, indexOsm } from '../osm/parse';
+import { doorSpec, extractBuildings, extractCampusPolys, extractTrees, indexOsm } from '../osm/parse';
 import type {
   Building, CampusOverrides, Crossing, DoorSpec, Edge, EdgeKind, GraphNode, HeightsData, LinkKind,
   Model, OsmData, OsmTags, StreetSeg, Tree, XY,
@@ -66,7 +66,8 @@ export class StreetIndex {
 export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): Model {
   const idx = indexOsm(osm);
   const overrides = opts.overrides ?? {};
-  const buildings = extractBuildings(idx, proj, opts.weekday, overrides.buildings ?? {}, opts.heights?.buildings ?? {});
+  const campusPolys = extractCampusPolys(idx, proj);
+  const buildings = extractBuildings(idx, proj, opts.weekday, overrides.buildings ?? {}, opts.heights?.buildings ?? {}, campusPolys);
   // Lidar canopy strictly supersedes OSM tree points as shade casters.
   const trees = opts.heights?.canopy?.length
     ? opts.heights.canopy.map((c, i): Tree => {
@@ -133,10 +134,14 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
       addNode('n' + b.id, pb, 'path', null);
       const mid = { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 };
       let k = kind, bld: string | null = null;
-      // A mapped corridor, or any path whose midpoint is inside a footprint, is indoor for that building.
+      let cov = covered;
+      // A mapped corridor, or any path whose midpoint is inside a footprint, is
+      // indoor for that building. Off-campus buildings are not enterable — a
+      // path through one stays outdoor but counts as covered (no sun).
       if (k === 'indoor' || k === 'outdoor') {
         const inB = bInside(mid);
-        if (inB) { k = 'indoor'; bld = inB.id; }
+        if (inB?.campus) { k = 'indoor'; bld = inB.id; }
+        else if (inB) { k = 'outdoor'; cov = true; }
       }
       if (k === 'indoor' && !bld) k = 'link';
       let crossing: Crossing | null = null;
@@ -147,7 +152,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
       }
       addEdge('n' + a.id, 'n' + b.id, k, {
         bld, linkKind: k === 'link' ? linkKind || 'corridor' : null,
-        covered, road, name, osmWay: +idStr, steps: hw === 'steps', crossing,
+        covered: cov, road, name, osmWay: +idStr, steps: hw === 'steps', crossing,
       });
     }
   }
@@ -223,7 +228,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
         if (d < bd) { bd = d; b = c; }
       }
     }
-    if (!b) continue;
+    if (!b || !b.campus) continue;
     if ('skip' in spec && spec.skip) { b.doorsSkipped.push(spec.skip); continue; }
     const nid = 'n' + idStr;
     addNode(nid, p, 'path', null);
@@ -237,6 +242,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
   // the assumed ones cost more, so the router prefers what the map knows and only
   // invents a door when it saves a real detour.
   for (const b of buildings) {
+    if (!b.campus) { b.doorCount = 0; continue; } // no hub, no doors, no cut-through
     const hub = addNode(b.id + ':hub', b.c, 'hub', b.id);
     const doors = doorsOf.get(b.id)!;
     const used = new Set([...doors.keys()].map((id) => sectorOf(b, nodes[id])));

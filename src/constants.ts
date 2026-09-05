@@ -1,5 +1,6 @@
-/** Study area (south, west, north, east). Widen freely; everything scales. */
-export const BBOX: [number, number, number, number] = [40.4262, -86.918, 40.4302, -86.9105];
+/** Study area (south, west, north, east). Widen freely; everything scales.
+ *  South edge sits just past Williams Street (~40.4185). */
+export const BBOX: [number, number, number, number] = [40.4175, -86.918, 40.4302, -86.9105];
 
 export const WALK_SPEED = 1.35; // m/s, typical campus pace
 export const INDOOR_FACTOR = 1.2; // doors, people, stairs
@@ -73,6 +74,8 @@ export const overpassQuery = (bbox: [number, number, number, number]): string =>
   way["natural"](${bbox});
   way["amenity"="parking"](${bbox});
   way["waterway"](${bbox});
+  way["amenity"="university"](${bbox});
+  relation["amenity"="university"](${bbox});
 );
 out body;
 >;

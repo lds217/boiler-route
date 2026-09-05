@@ -99,9 +99,12 @@ function drawModel() {
     L.polyline([A, B], { pane: 'net', ...st }).addTo(netLayer);
   }
   for (const b of model.buildings) {
-    const poly = L.polygon(b.ring.map(ll), { color: '#8F8779', weight: 1, fillColor: '#CBC5B7', fillOpacity: 0.85, bubblingMouseEvents: false }).addTo(bldLayer);
-    if (b.named) poly.bindTooltip(b.abbr, { permanent: true, direction: 'center', className: 'bl' });
-    poly.on('click', () => { if (b.named) setPlace({ kind: 'building', id: b.id, label: `${b.abbr}  ${b.name}` }); });
+    // Off-campus buildings are scenery: muted, unlabeled, clicks fall through to the map.
+    const poly = L.polygon(b.ring.map(ll), b.campus
+      ? { color: '#8F8779', weight: 1, fillColor: '#CBC5B7', fillOpacity: 0.85, bubblingMouseEvents: false }
+      : { color: '#A9A396', weight: 0.8, fillColor: '#DDD9CF', fillOpacity: 0.6, interactive: false }).addTo(bldLayer);
+    if (b.campus && b.named) poly.bindTooltip(b.abbr, { permanent: true, direction: 'center', className: 'bl' });
+    if (b.campus) poly.on('click', () => { if (b.named) setPlace({ kind: 'building', id: b.id, label: `${b.abbr}  ${b.name}` }); });
     bldShapes[b.id] = poly;
   }
   for (const t of model.trees)
@@ -165,7 +168,7 @@ function loadFile(input: HTMLInputElement) {
 function suggestions(q: string) {
   if (!model) return [];
   q = q.trim().toLowerCase();
-  const named = model.buildings.filter((b) => b.named);
+  const named = model.buildings.filter((b) => b.named && b.campus);
   const score = (b: typeof named[0]): number | null => {
     const ab = b.abbr.toLowerCase(), nm = b.name.toLowerCase();
     if (!q) return 5;
@@ -386,6 +389,7 @@ function update() {
 
   const open = computeOpen(model.buildings, date.getDay(), mins / 60);
   for (const b of model.buildings) {
+    if (!b.campus) continue; // scenery keeps its muted style
     bldShapes[b.id]?.setStyle({ fillColor: open[b.id] ? '#CBC5B7' : '#DDD8CD', dashArray: open[b.id] ? undefined : '3 3' });
     const tipEl = bldShapes[b.id]?.getTooltip()?.getElement();
     tipEl?.classList.toggle('closed', !open[b.id]);
@@ -513,8 +517,8 @@ function start(osm: OsmData, sourceNote?: string) {
   rawOsm = osm;
   model = buildModel(osm, proj, { weekday: new Date().getDay(), overrides, heights });
   basemap = extractBasemap(osm, proj);
-  const named = model.buildings.filter((b) => b.named);
-  if (named.length < 2) { showError(new Error('fewer than two named buildings in this block')); return; }
+  const named = model.buildings.filter((b) => b.named && b.campus);
+  if (named.length < 2) { showError(new Error('fewer than two named campus buildings in this block')); return; }
   drawBasemap(); drawModel(); routeLayer.clearLayers();
   const links = model.edges.filter((e) => e.kind === 'link').length;
   const lidarN = heights ? model.buildings.filter((b) => b.heightSource === 'lidar').length : 0;
@@ -526,7 +530,7 @@ function start(osm: OsmData, sourceNote?: string) {
       ? ` <b>The data is ${days} days old</b> — refresh it with <code>npm run update-data</code> or "Save data for next time".`
       : ` Data is ${days} day${days === 1 ? '' : 's'} old.`;
   }
-  $('loadbox').innerHTML = `<p class="status"><b>${model.buildings.length}</b> buildings (${named.length} named), <b>${model.edges.filter((e) => e.kind === 'outdoor' && !e.connector).length}</b> path segments, <b>${model.trees.length}</b> ${heights?.canopy?.length ? 'canopy patches (lidar)' : 'trees'}${lidarN ? `, <b>${lidarN}</b> lidar heights` : ''}${links ? `, <b>${links}</b> indoor link segments` : ''}, ${model.crossings} mapped crossings, ${model.gapsClosed} sidewalk gaps closed${model.jaywalks ? `, ${model.jaywalks} footways cross a street with no crossing` : ''}, ${src}.${age}</p>
+  $('loadbox').innerHTML = `<p class="status"><b>${model.buildings.filter((b) => b.campus).length}</b> campus buildings (${named.length} named, ${model.buildings.length - model.buildings.filter((b) => b.campus).length} off-campus drawn for shade), <b>${model.edges.filter((e) => e.kind === 'outdoor' && !e.connector).length}</b> path segments, <b>${model.trees.length}</b> ${heights?.canopy?.length ? 'canopy patches (lidar)' : 'trees'}${lidarN ? `, <b>${lidarN}</b> lidar heights` : ''}${links ? `, <b>${links}</b> indoor link segments` : ''}, ${model.crossings} mapped crossings, ${model.gapsClosed} sidewalk gaps closed${model.jaywalks ? `, ${model.jaywalks} footways cross a street with no crossing` : ''}, ${src}.${age}</p>
   <div class="btnrow" style="margin:0 0 4px"><button class="btn quiet" id="saveosm">Save data for next time</button><label class="btn quiet" style="display:inline-block">Load saved data<input type="file" id="jsonfile2" accept="application/json,.json" style="display:none"></label></div>`;
   $('saveosm').onclick = saveOsm;
   loadFile($<HTMLInputElement>('jsonfile2'));

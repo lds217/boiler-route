@@ -25,6 +25,14 @@ describe.skipIf(!osm)('real Purdue extract', () => {
     expect(model.buildings.length).toBeGreaterThan(10);
     expect(model.buildings.filter((b) => b.named).length).toBeGreaterThan(5);
     expect(model.edges.length).toBeGreaterThan(200);
+    const campus = model.buildings.filter((b) => b.campus);
+    const off = model.buildings.filter((b) => !b.campus);
+    console.log(`campus=${campus.length} off-campus=${off.length}; off-campus named: ${off.filter((b) => b.named).map((b) => b.name).slice(0, 8).join('; ')}`);
+    expect(campus.length).toBeGreaterThan(20);
+    // at least one off-campus building proves the Purdue polygon was found
+    // (with no polygon the fallback marks everything campus)
+    expect(off.length).toBeGreaterThanOrEqual(1);
+    for (const b of off) expect(model.nodes[b.id + ':hub']).toBeUndefined();
   });
 
   it('extracts a basemap', () => {

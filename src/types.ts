@@ -26,6 +26,9 @@ export interface Building {
   height: number; // m
   heightTagged: boolean;
   heightSource: 'lidar' | 'osm' | 'assumed';
+  /** Inside the university grounds: routable indoors, searchable, labeled.
+   *  Off-campus buildings only cast shadows and draw as basemap shapes. */
+  campus: boolean;
   hours: [number, number]; // decimal hours [open, close)
   hoursTagged: boolean;
   /** From campus-overrides.json; beats OSM opening_hours. */

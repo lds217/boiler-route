@@ -114,6 +114,28 @@ describe('fake3 graph construction', () => {
   });
 });
 
+describe('campus boundary', () => {
+  it('buildings outside the university polygon get no doors, hub or indoor edges', () => {
+    const f = fake3();
+    // campus polygon covering Alpha and Beta but not Gamma
+    f.way([[-170, -55], [50, -55], [50, 55], [-170, 55], [-170, -55]], { amenity: 'university', name: 'Test U' });
+    const model = f.model();
+    const alpha = bld(model, 'ALPH'), gamma = bld(model, 'GAMM');
+    expect(alpha.campus).toBe(true);
+    expect(gamma.campus).toBe(false);
+    expect(gamma.doorCount).toBe(0);
+    expect(model.nodes[gamma.id + ':hub']).toBeUndefined();
+    expect(model.edges.some((e) => e.kind === 'indoor' && e.bld === gamma.id)).toBe(false);
+    // still a shade caster
+    expect(model.buildings.map((b) => b.abbr)).toContain('GAMM');
+  });
+
+  it('without any university polygon everything is campus (fixtures, old extracts)', () => {
+    const model = fake3().model();
+    expect(model.buildings.every((b) => b.campus)).toBe(true);
+  });
+});
+
 describe('manual links', () => {
   const model = fake2().model({
     overrides: { manualLinks: [{ a: 'One Hall', b: 'Three Hall', kind: 'skywalk', verified: false, note: 'walk it' }] },

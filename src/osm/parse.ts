@@ -2,7 +2,7 @@ import {
   DEFAULT_BUILDING_HEIGHT, DEFAULT_HOURS, DEFAULT_TREE_CROWN_RADIUS, DEFAULT_TREE_HEIGHT,
   LEVEL_HEIGHT, SEC,
 } from '../constants';
-import { bboxOf, centroid, type Projection } from '../geometry';
+import { bboxOf, centroid, pointInRing, type Projection } from '../geometry';
 import { INDOOR_C } from '../comfort';
 import { parseHours } from '../hours';
 import type {
@@ -35,6 +35,35 @@ export function initials(name: string): string {
   return (w.length >= 2 ? w.map((x) => x[0]).join('') : name.slice(0, 4)).toUpperCase().slice(0, 5);
 }
 
+/**
+ * University grounds (amenity=university ways and multipolygon relations).
+ * Outer ways are stitched into closed rings; a building whose centroid falls
+ * inside any ring is a campus building.
+ */
+export function extractCampusPolys(idx: OsmIndex, proj: Projection): RingPoint[][] {
+  const polys: RingPoint[][] = [];
+  for (const id in idx.ways) {
+    const w = idx.ways[id];
+    if (w.tags?.amenity === 'university' && w.nodes[0] === w.nodes[w.nodes.length - 1]) {
+      const r = ringOf(w, idx, proj);
+      if (r.length >= 4) polys.push(r);
+    }
+  }
+  for (const rel of idx.relations) {
+    if (rel.tags?.amenity !== 'university') continue;
+    let outers = (rel.members || [])
+      .filter((m) => m.type === 'way' && m.role !== 'inner' && idx.ways[m.ref])
+      .map((m) => ringOf(idx.ways[m.ref], idx, proj))
+      .filter((r) => r.length >= 2);
+    let guard = 200;
+    while (outers.length && guard--) {
+      const ring = stitchRings(outers); // consumes matching ways from `outers`
+      if (ring.length >= 4) polys.push(ring);
+    }
+  }
+  return polys;
+}
+
 /** Join a relation's outer ways into one ring by matching endpoints. */
 export function stitchRings(rings: RingPoint[][]): RingPoint[] {
   let out = rings.shift()!, guard = 50;
@@ -58,8 +87,16 @@ export function extractBuildings(
   idx: OsmIndex, proj: Projection, weekday: number,
   overrides: Record<string, BuildingOverride> = {},
   lidarHeights: Record<string, number> = {},
+  campusPolys: RingPoint[][] = [],
 ): Building[] {
   const buildings: Building[] = [];
+  // With no campus polygon in the data, everything is campus (synthetic fixtures,
+  // or an extract from before amenity=university was fetched).
+  const onCampus = (c: { x: number; y: number }, tags: OsmTags): boolean => {
+    if (tags.building === 'university' || /purdue/i.test(tags.operator || '')) return true;
+    if (!campusPolys.length) return true;
+    return campusPolys.some((ring) => pointInRing(c, ring));
+  };
   const add = (id: number, tags: OsmTags, ring: RingPoint[] | undefined) => {
     if (!ring || ring.length < 4) return;
     if (ring[0].osm === ring[ring.length - 1].osm) ring = ring.slice(0, -1);
@@ -73,9 +110,10 @@ export function extractBuildings(
     const ov = overrideFor(overrides, id, name);
     const hrs = ov?.hours ?? parseHours(tags.opening_hours, weekday);
     const indoorC = ov?.conditioned === false ? null : ov?.indoorC ?? INDOOR_C;
+    const c = centroid(ring);
     buildings.push({
       id: 'b' + id, osmId: id, name: name || `Unnamed building ${id}`, named: !!name, abbr,
-      ring, bbox: bboxOf(ring), c: centroid(ring), height,
+      ring, bbox: bboxOf(ring), c, campus: onCampus(c, tags), height,
       heightTagged: heightSource !== 'assumed', heightSource,
       hours: hrs || DEFAULT_HOURS, hoursTagged: !!hrs, hoursOverride: ov?.hours, tags,
       doorsTagged: 0, doorsAssumed: 0, doorsSkipped: [], doorCount: 0, indoorC,
