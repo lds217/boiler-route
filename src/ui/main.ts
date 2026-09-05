@@ -253,7 +253,10 @@ $('swap').onclick = () => {
 let watchId: number | null = null;
 let locDot: L.CircleMarker | null = null;
 let locRing: L.Circle | null = null;
+let lastFix: { lat: number; lon: number } | null = null;
 function showFix(lat: number, lon: number, acc: number) {
+  lastFix = { lat, lon };
+  try { localStorage.setItem('geoOk', '1'); } catch { /* private mode */ }
   if (!locDot) {
     locRing = L.circle([lat, lon], { radius: acc, color: '#1F5FBF', weight: 1, opacity: 0.4, fillColor: '#1F5FBF', fillOpacity: 0.08, interactive: false }).addTo(map);
     locDot = L.circleMarker([lat, lon], { pane: 'routes', radius: 7, color: '#fff', weight: 2.5, fillColor: '#1F5FBF', fillOpacity: 1, interactive: false }).addTo(map);
@@ -263,17 +266,40 @@ function showFix(lat: number, lon: number, acc: number) {
   }
 }
 function startWatch() {
-  if (watchId !== null || !navigator.geolocation) return;
+  if (watchId !== null || !navigator.geolocation || !window.isSecureContext) return;
   watchId = navigator.geolocation.watchPosition(
     (pos) => showFix(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
     () => {}, { enableHighAccuracy: true, maximumAge: 5000 });
 }
-function locate() {
-  if (!navigator.geolocation) { setStatus('This browser has no location access.'); return; }
+function geoReady(): boolean {
+  if (!navigator.geolocation) { setStatus('This browser has no location access.'); return false; }
   if (!window.isSecureContext) {
-    setStatus('Location needs a secure page: browsers only allow GPS over <b>https://</b> (or on localhost). Start the server with <code>npm run dev:https</code> and open the https address, accepting the certificate warning once.');
-    return;
+    setStatus('Location needs a secure page: browsers only allow GPS over <b>https://</b> (or on localhost). Open the <b>https://</b> address of this app (dev: <code>npm run dev:https</code>), accepting the certificate warning once.');
+    return false;
   }
+  return true;
+}
+const geoError = (err: GeolocationPositionError) =>
+  setStatus('Location unavailable: ' + esc(err.message) +
+    (err.code === 1
+      ? '. On iPhone: Settings → Privacy &amp; Security → Location Services → Safari Websites → “While Using”, then reload and allow the prompt.'
+      : '. Try tapping the map instead.'));
+
+/** Floating GPS button: show/centre the blue dot without touching the route. */
+function showMyLocation() {
+  if (!geoReady()) return;
+  if (lastFix) map.setView([lastFix.lat, lastFix.lon], Math.max(map.getZoom(), 17));
+  else setStatus('Finding your location…');
+  navigator.geolocation.getCurrentPosition((pos) => {
+    showFix(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+    startWatch();
+    map.setView([pos.coords.latitude, pos.coords.longitude], Math.max(map.getZoom(), 17));
+  }, geoError, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+/** "Use my location": same, but also sets the starting point. */
+function locate() {
+  if (!geoReady()) return;
   setStatus('Finding your location…');
   navigator.geolocation.getCurrentPosition((pos) => {
     const { latitude: lat, longitude: lon, accuracy } = pos.coords;
@@ -286,11 +312,19 @@ function locate() {
     }
     const p = pointAt({ lat, lng: lon });
     if (p) { p.label = 'My location'; setPlace(p, 'from'); } else setStatus('No mapped path near your location.');
-  }, (err) => setStatus('Location unavailable: ' + esc(err.message) +
-    (err.code === 1 ? '. Allow location for this site in your browser settings.' : '. Try tapping the map instead.')),
-  { enableHighAccuracy: true, timeout: 10000 });
+  }, geoError, { enableHighAccuracy: true, timeout: 10000 });
 }
 $('locate').onclick = locate;
+
+const locBtn = document.createElement('button');
+locBtn.id = 'locbtn';
+locBtn.setAttribute('aria-label', 'Show my location');
+locBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5"/></svg>';
+document.body.appendChild(locBtn);
+locBtn.onclick = showMyLocation;
+
+// If GPS was granted on a previous visit, resume the live dot quietly.
+try { if (localStorage.getItem('geoOk') && window.isSecureContext) startWatch(); } catch { /* private mode */ }
 $('share').onclick = () => {
   writeHash();
   navigator.clipboard?.writeText(location.href).then(() => {

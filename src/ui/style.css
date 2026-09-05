@@ -109,6 +109,11 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
   .handle{display:none}
 }
 
+#locbtn{position:fixed;right:12px;bottom:calc(148px + env(safe-area-inset-bottom));z-index:5;width:44px;height:44px;border-radius:50%;
+  background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer;color:#1F5FBF}
+#locbtn:active{background:var(--soft)}
+@media (min-width:820px){#locbtn{right:16px;bottom:24px}}
+
 /* phones and other coarse pointers */
 @media (max-width:819px){
   /* 16px inputs stop iOS Safari from zooming the page on focus */
