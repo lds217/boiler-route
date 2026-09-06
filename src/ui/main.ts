@@ -48,8 +48,11 @@ const sunColor = (f: number) => {
 const ll = (p: { x: number; y: number }): [number, number] => proj.ll(p);
 
 /* ================= map ================= */
-const map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([CAMPUS.lat, CAMPUS.lon], 17);
+// Extra canvas padding renders past the viewport so panning doesn't redraw every frame.
+const map = L.map('map', { zoomControl: false, preferCanvas: true, renderer: L.canvas({ padding: 0.5 }) }).setView([CAMPUS.lat, CAMPUS.lon], 17);
 L.control.zoom({ position: 'topright' }).addTo(map);
+const syncLabels = () => document.body.classList.toggle('lowzoom', map.getZoom() < 16);
+map.on('zoomend', syncLabels); syncLabels();
 map.createPane('ground').style.zIndex = '330';
 map.createPane('base').style.zIndex = '340';
 map.createPane('shadow').style.zIndex = '350';
@@ -88,9 +91,11 @@ function drawBasemap() {
   }
 }
 
-function drawModel() {
-  if (!model) return;
-  bldLayer.clearLayers(); netLayer.clearLayers();
+// The walkable-network overlay is thousands of polylines; build it only when first shown.
+let netBuilt = false;
+function buildNet() {
+  if (netBuilt || !model) return;
+  netBuilt = true;
   for (const e of model.edges) {
     const A = ll(model.nodes[e.a]), B = ll(model.nodes[e.b]);
     const st = e.kind === 'outdoor'
@@ -98,6 +103,10 @@ function drawModel() {
       : { color: '#A67C12', weight: 2, dashArray: '4 4', opacity: 0.9 };
     L.polyline([A, B], { pane: 'net', ...st }).addTo(netLayer);
   }
+}
+function drawModel() {
+  if (!model) return;
+  bldLayer.clearLayers(); netLayer.clearLayers(); netBuilt = false;
   for (const b of model.buildings) {
     // Off-campus buildings are scenery: muted, unlabeled, clicks fall through to the map.
     const poly = L.polygon(b.ring.map(ll), b.campus
@@ -135,7 +144,23 @@ function drawPins() {
 }
 
 /* ================= status / errors ================= */
-function setStatus(msg: string) { $('loadbox').innerHTML = `<p class="status">${msg}</p>`; }
+// Once the app is running, status goes to a toast that stays visible whatever the
+// sheet is doing (a collapsed sheet used to swallow GPS errors silently).
+const toastEl = document.createElement('div');
+toastEl.id = 'toast';
+document.body.appendChild(toastEl);
+let toastT: number | undefined;
+function toast(html: string) {
+  toastEl.innerHTML = html;
+  toastEl.classList.add('show');
+  clearTimeout(toastT);
+  toastT = window.setTimeout(() => toastEl.classList.remove('show'), 7000);
+}
+toastEl.onclick = () => toastEl.classList.remove('show');
+function setStatus(msg: string) {
+  if (model) toast(msg);
+  else $('loadbox').innerHTML = `<p class="status">${msg}</p>`;
+}
 function showError(err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   $('loadbox').innerHTML = `<div class="err"><b>Could not load OpenStreetMap data.</b><br><small>${esc(message)}</small><br><br>
@@ -200,7 +225,7 @@ function renderSugg(field: 'from' | 'to') {
 function closeSugg() { document.querySelectorAll('.sugg').forEach((s) => s.classList.remove('open')); }
 for (const f of ['from', 'to'] as const) {
   const inp = $<HTMLInputElement>(f);
-  inp.addEventListener('focus', () => { if (model) { inp.select(); renderSugg(f); } });
+  inp.addEventListener('focus', () => { if (model) { inp.select(); renderSugg(f); if (isMobile()) setSheet('peek'); } });
   inp.addEventListener('input', () => renderSugg(f));
   inp.addEventListener('blur', () => setTimeout(closeSugg, 120));
   inp.addEventListener('keydown', (ev) => {
@@ -351,20 +376,84 @@ function readHash() {
   if (o) setPlace(o, 'from');
   if (d) setPlace(d, 'to');
 }
-/* bottom sheet: tap toggles, swiping the handle up/down expands/collapses */
-{
-  const sheet = $('sheet'), handle = $('handle');
-  handle.onclick = () => sheet.classList.toggle('peek');
-  let startY = 0;
-  handle.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
-  handle.addEventListener('touchend', (e) => {
-    e.preventDefault(); // suppress the synthetic click that would re-toggle
-    const dy = e.changedTouches[0].clientY - startY;
-    if (dy > 16) sheet.classList.add('peek');
-    else if (dy < -16) sheet.classList.remove('peek');
-    else sheet.classList.toggle('peek');
-  });
+/* ================= bottom sheet: peek / half / full ================= */
+type SheetPos = 'peek' | 'half' | 'full';
+const sheetEl = $('sheet'), sheetc = $('sheetc');
+const isMobile = () => window.innerWidth < 820;
+let sheetPos: SheetPos = 'half';
+// measures env(safe-area-inset-bottom) so the peek bar clears the home indicator
+const safeProbe = document.createElement('div');
+safeProbe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom);pointer-events:none;visibility:hidden';
+document.body.appendChild(safeProbe);
+function visFor(p: SheetPos): number {
+  if (p === 'full') return sheetEl.getBoundingClientRect().height;
+  if (p === 'half') return Math.min(window.innerHeight * 0.5, 430);
+  return 21 + $('tripbar').offsetHeight + safeProbe.offsetHeight; // handle + trip bar
 }
+function applySheet() {
+  sheetEl.dataset.pos = sheetPos;
+  sheetEl.style.transform = isMobile()
+    ? `translateY(${sheetEl.getBoundingClientRect().height - visFor(sheetPos)}px)` : '';
+}
+function setSheet(p: SheetPos) { sheetPos = p; applySheet(); }
+function setTrip(html: string) { $('tripmain').innerHTML = html; }
+{
+  let y0 = 0, off0 = 0, cur = 0, lastY = 0, lastT = 0, vy = 0;
+  let dragging = false, fromContent = false;
+  sheetEl.addEventListener('touchstart', (e) => {
+    if (!isMobile()) return;
+    y0 = lastY = e.touches[0].clientY; lastT = e.timeStamp; vy = 0;
+    off0 = cur = sheetEl.getBoundingClientRect().height - visFor(sheetPos);
+    dragging = false;
+    fromContent = sheetc.contains(e.target as Node);
+  }, { passive: true });
+  sheetEl.addEventListener('touchmove', (e) => {
+    if (!isMobile()) return;
+    const y = e.touches[0].clientY, dy = y - y0;
+    if (!dragging) {
+      // in the full state the content owns upward drags and any drag while scrolled
+      if (sheetPos === 'full' && fromContent && (sheetc.scrollTop > 0 || dy < 0)) return;
+      if (Math.abs(dy) < 6) return;
+      dragging = true;
+      sheetEl.classList.add('drag');
+    }
+    e.preventDefault();
+    const H = sheetEl.getBoundingClientRect().height;
+    cur = Math.min(Math.max(off0 + dy, H - visFor('full')), H - visFor('peek'));
+    sheetEl.style.transform = `translateY(${cur}px)`;
+    if (e.timeStamp > lastT) vy = (y - lastY) / (e.timeStamp - lastT);
+    lastY = y; lastT = e.timeStamp;
+  }, { passive: false });
+  sheetEl.addEventListener('touchend', (e) => {
+    if (!dragging) return;
+    e.preventDefault(); // no synthetic click after a drag
+    dragging = false;
+    sheetEl.classList.remove('drag');
+    const vis = sheetEl.getBoundingClientRect().height - cur;
+    let best: SheetPos = 'peek', bd = Infinity;
+    for (const p of ['peek', 'half', 'full'] as SheetPos[]) {
+      const d = Math.abs(visFor(p) - vis);
+      if (d < bd) { bd = d; best = p; }
+    }
+    // a fling overrides the nearest snap
+    if (vy > 0.35) best = vis > visFor('half') ? 'half' : 'peek';
+    else if (vy < -0.35) best = vis < visFor('half') ? 'half' : 'full';
+    setSheet(best);
+  });
+  $('handle').onclick = () => setSheet(sheetPos === 'peek' ? 'half' : 'peek');
+  $('tripbar').onclick = () => setSheet(sheetPos === 'peek' ? 'half' : sheetPos === 'half' ? 'full' : 'peek');
+  window.addEventListener('resize', () => { applySheet(); syncMini(); });
+  applySheet();
+}
+
+/* collapsed search bar: one compact row once both ends are set (phones) */
+function syncMini() {
+  if (!isMobile() || !origin || !dest) { $('search').classList.remove('mini'); return; }
+  const short = (p: Place) => p.kind === 'building' && model ? model.byId[p.id].abbr : p.label === 'My location' ? 'Me' : 'Pin';
+  $('minibar').innerHTML = `${esc(short(origin))} <small>→</small> ${esc(short(dest))} <span class="edit">edit</span>`;
+  $('search').classList.add('mini');
+}
+$('minibar').onclick = () => $('search').classList.remove('mini');
 
 /* ================= conditions ================= */
 for (const id of ['date', 'tempn', 'wind', 'cloud', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk'])
@@ -374,7 +463,9 @@ $('basemap').addEventListener('change', () => {
   if (v === 'tiles') { tiles.addTo(map); } else { map.removeLayer(tiles); }
   drawBasemap();
 });
-$('shownet').addEventListener('change', (e) => ((e.target as HTMLInputElement).checked ? netLayer.addTo(map) : map.removeLayer(netLayer)));
+$('shownet').addEventListener('change', (e) => {
+  if ((e.target as HTMLInputElement).checked) { buildNet(); netLayer.addTo(map); } else map.removeLayer(netLayer);
+});
 function nearestOption(sel: HTMLSelectElement, v: number) {
   let best: string | null = null, bd = 1e9;
   for (const o of sel.options) { const d = Math.abs(+o.value - v); if (d < bd) { bd = d; best = o.value; } }
@@ -418,8 +509,10 @@ function update() {
   $('condcur').textContent = `${fmtClock(mins)}, ${Math.round(tempF)} °F${sunAddF ? `, sun +${sunAddF} °F` : ''}`;
   $('suntext').lastElementChild!.textContent = sun.alt <= 0 ? 'Night' : `Sun ${Math.round((sun.alt * 180) / Math.PI)}° ${compassShort(sun.bearing)}, +${sunAddF} °F`;
   shadowLayer.clearLayers();
-  for (const h of shadows)
-    L.polygon(h.map(ll), { pane: 'shadow', stroke: false, fillColor: '#221E19', fillOpacity: 0.16, interactive: false }).addTo(shadowLayer);
+  // One multipolygon = one canvas path: much cheaper than hundreds of layers, and
+  // overlapping shadows no longer double-darken.
+  if (shadows.length)
+    L.polygon(shadows.map((h) => [h.map(ll)]), { pane: 'shadow', stroke: false, fillColor: '#221E19', fillOpacity: 0.16, interactive: false }).addTo(shadowLayer);
 
   const open = computeOpen(model.buildings, date.getDay(), mins / 60);
   for (const b of model.buildings) {
@@ -431,6 +524,8 @@ function update() {
   if (!origin || !dest) {
     $('routes').innerHTML = `<p class="note">${!origin && !dest ? 'Choose a start and a destination, or tap two buildings on the map.' : !dest ? 'Now choose a destination.' : 'Now choose a starting point.'}</p>`;
     $('steps').innerHTML = ''; $('dircur').textContent = ''; $('warn').innerHTML = '';
+    setTrip(!origin && !dest ? 'Choose a start and a destination' : !dest ? 'Now choose a destination' : 'Now choose a starting point');
+    syncMini();
     routeLayer.clearLayers();
     return;
   }
@@ -453,8 +548,8 @@ function update() {
   if (pair !== lastPair) {
     lastPair = pair;
     fitRoute();
-    // on phones, drop the sheet to a peek so the freshly fitted route is visible
-    if (window.innerWidth < 820) $('sheet').classList.add('peek');
+    // on phones, drop the sheet to a peek and shrink the search card so the route is visible
+    if (isMobile()) { setSheet('peek'); syncMini(); }
   }
   writeHash();
 }
@@ -463,10 +558,10 @@ function fitRoute() {
   if (!r || !model) return;
   const pts: [number, number][] = [];
   for (const e of r) { pts.push(ll(model.nodes[e.a]), ll(model.nodes[e.b])); }
-  const mobile = window.innerWidth < 820;
+  const mobile = isMobile();
   map.fitBounds(L.latLngBounds(pts), {
-    paddingTopLeft: mobile ? [20, 140] : [440, 40],
-    paddingBottomRight: mobile ? [20, 170] : [40, 40], // sheet peeks after a new route on phones
+    paddingTopLeft: mobile ? [20, 70] : [440, 40], // mini search bar on top
+    paddingBottomRight: mobile ? [20, 130] : [40, 40], // sheet peeks after a new route
     maxZoom: 18,
   });
 }
@@ -475,10 +570,11 @@ function renderRoutes() {
   const { fast, comfy, ctx, src } = lastRoutes;
   const box = $('routes'), warn = $('warn');
   box.innerHTML = ''; warn.innerHTML = ''; routeLayer.clearLayers();
-  if (src === routeNode(dest)) { box.innerHTML = '<p class="note">Start and destination are the same place.</p>'; $('steps').innerHTML = ''; return; }
+  if (src === routeNode(dest)) { box.innerHTML = '<p class="note">Start and destination are the same place.</p>'; $('steps').innerHTML = ''; setTrip('Start and destination are the same place'); return; }
   if (!fast) {
     box.innerHTML = `<p class="note">No route found. ${esc(diagnose(model, origin, dest, ctx))}</p>`;
     $('steps').innerHTML = ''; $('dircur').textContent = '';
+    setTrip('No route found — pull up for details');
     return;
   }
   for (const [pl, role] of [[dest, 'destination'], [origin, 'start']] as [Place, string][])
@@ -538,6 +634,7 @@ function renderRoutes() {
   draw(shownPath, true);
   const steps = directions(model, shownPath, src, ctx);
   const ss = summarize(shownPath, ctx);
+  setTrip(`<b>${fmtMin(ss.time)}</b> · arrive ${fmtClock((ctx.mins + Math.round(ss.time / 60)) % 1440)} · ${shown === 'fast' ? 'fastest' : 'comfortable'} route`);
   $('dircur').textContent = `${shown === 'fast' ? 'Fastest' : 'Comfortable'}, ${fmtMin(ss.time)}`;
   $('steps').innerHTML = steps.map((s, i) => `<li data-i="${i}"${s.warn ? ' style="background:#FFF4E5"' : ''}><span class="ic ${s.icon}"></span><span>${esc(s.text)}${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span><span class="m">${s.m} m</span></li>`).join('');
   $('steps').querySelectorAll('li').forEach((li) => (li.onclick = () => {
@@ -564,11 +661,14 @@ function start(osm: OsmData, sourceNote?: string) {
       ? ` <b>The data is ${days} days old</b> — refresh it with <code>npm run update-data</code> or "Save data for next time".`
       : ` Data is ${days} day${days === 1 ? '' : 's'} old.`;
   }
-  $('loadbox').innerHTML = `<p class="status"><b>${model.buildings.filter((b) => b.campus).length}</b> campus buildings (${named.length} named, ${model.buildings.length - model.buildings.filter((b) => b.campus).length} off-campus drawn for shade), <b>${model.edges.filter((e) => e.kind === 'outdoor' && !e.connector).length}</b> path segments, <b>${model.trees.length}</b> ${heights?.canopy?.length ? 'canopy patches (lidar)' : 'trees'}${lidarN ? `, <b>${lidarN}</b> lidar heights` : ''}${links ? `, <b>${links}</b> indoor link segments` : ''}, ${model.crossings} mapped crossings, ${model.gapsClosed} sidewalk gaps closed${model.jaywalks ? `, ${model.jaywalks} footways cross a street with no crossing` : ''}, ${src}.${age}</p>
+  // model stats and data buttons live in the data section, not above the route cards
+  $('loadbox').innerHTML = '';
+  $('datastats').innerHTML = `<p class="status"><b>${model.buildings.filter((b) => b.campus).length}</b> campus buildings (${named.length} named, ${model.buildings.length - model.buildings.filter((b) => b.campus).length} off-campus drawn for shade), <b>${model.edges.filter((e) => e.kind === 'outdoor' && !e.connector).length}</b> path segments, <b>${model.trees.length}</b> ${heights?.canopy?.length ? 'canopy patches (lidar)' : 'trees'}${lidarN ? `, <b>${lidarN}</b> lidar heights` : ''}${links ? `, <b>${links}</b> indoor link segments` : ''}, ${model.crossings} mapped crossings, ${model.gapsClosed} sidewalk gaps closed${model.jaywalks ? `, ${model.jaywalks} footways cross a street with no crossing` : ''}, ${src}.${age}</p>
   <div class="btnrow" style="margin:0 0 4px"><button class="btn quiet" id="saveosm">Save data for next time</button><label class="btn quiet" style="display:inline-block">Load saved data<input type="file" id="jsonfile2" accept="application/json,.json" style="display:none"></label></div>`;
   $('saveosm').onclick = saveOsm;
   loadFile($<HTMLInputElement>('jsonfile2'));
   ($('planner') as HTMLElement).hidden = false;
+  if (isMobile()) $('condbox').removeAttribute('open'); // condcur summarises it anyway
   const now = new Date();
   const dateInp = $('date') as HTMLInputElement;
   if (!dateInp.value) {
