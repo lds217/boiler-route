@@ -63,9 +63,16 @@ map.createPane('shadow').style.zIndex = '350';
 map.createPane('net').style.zIndex = '360';
 map.createPane('routes').style.zIndex = '450';
 // The vectors are OSM data, so attribution stays visible whatever the basemap.
+// On GitHub Pages the repo is in the URL, so the issue link needs no configuring.
+const issuesUrl = (): string | null => {
+  const m = location.hostname.match(/^([\w-]+)\.github\.io$/);
+  if (!m) return null;
+  const repo = location.pathname.split('/').filter(Boolean)[0];
+  return `https://github.com/${m[1]}/${repo || m[1] + '.github.io'}/issues`;
+};
 map.attributionControl.addAttribution(
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
-  '· <a href="https://github.com/purdue-boiler-route/boiler-route/issues">Report a map issue</a>');
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' +
+  (issuesUrl() ? ` · <a href="${issuesUrl()}">Report a map issue</a>` : ''));
 const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, opacity: 0.6 });
 const groundLayer = L.layerGroup().addTo(map);
 const shadowLayer = L.layerGroup().addTo(map);

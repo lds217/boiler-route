@@ -1,10 +1,22 @@
 /* Boiler Route service worker: cache-first for the app shell, so the campus
    works offline once visited. The OSM data bundle uses stale-while-revalidate
    so a weekly refresh lands without blocking startup. */
-const CACHE = 'boiler-route-v2';
+const CACHE = 'boiler-route-v3';
+
+/* The whole campus is ~200 KB gzipped, so pull it down on install: after one
+   visit the map, buildings, heights and canopy all work with no network. */
+const PRECACHE = [
+  './', './boiler-route-data.json', './campus-heights.json',
+  './manifest.webmanifest', './icon.svg', './apple-touch-icon.png',
+];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./'])).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      // one missing file must not abort the install
+      .then((c) => Promise.all(PRECACHE.map((u) => c.add(u).catch(() => {}))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (e) => {
