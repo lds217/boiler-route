@@ -4,14 +4,20 @@
   "description": "Weather-aware pedestrian routing for Purdue's West Lafayette campus",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#E9E6DE",
-  "theme_color": "#FBFAF6",
+  "background_color": "#EDEAE2",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

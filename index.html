@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#FBFAF6">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -20,23 +20,23 @@
 <div id="top">
 <section id="search" aria-label="Route search">
   <button id="minibar" aria-label="Edit route"></button>
-  <div class="brandline"><b>Boiler Route</b><span class="sun" id="suntext"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="#E2572B"/><g stroke="#E2572B" stroke-width="1.6" stroke-linecap="round"><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></g></svg><span>Loading</span></span></div>
+  <div class="brandline"><b>Boiler Route</b><span class="sun" id="suntext"><span class="i" data-icon="sun" data-size="16"></span><span>Loading</span></span></div>
   <div class="fields">
     <div class="stack">
       <div class="sfield" id="f-from"><span class="dot"></span><input id="from" placeholder="Choose starting point" autocomplete="off" spellcheck="false"><button class="clear" data-for="from" aria-label="Clear start">×</button><div class="sugg" id="from-sugg"></div></div>
       <div class="sfield" id="f-to"><span class="dot d"></span><input id="to" placeholder="Choose destination" autocomplete="off" spellcheck="false"><button class="clear" data-for="to" aria-label="Clear destination">×</button><div class="sugg" id="to-sugg"></div></div>
     </div>
-    <button class="swap" id="swap" title="Swap" aria-label="Swap start and destination"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v10M1.5 9.5 4 12l2.5-2.5M12 14V4M9.5 6.5 12 4l2.5 2.5"/></svg></button>
+    <button class="swap" id="swap" title="Swap" aria-label="Swap start and destination"><span class="i" data-icon="swap" data-size="17"></span></button>
   </div>
-  <div class="quick" id="quick"><button id="locate"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 3 3 10.5l7.5 3 3 7.5z"/></svg>Use my location</button><span>·</span><span>tap the map or a building</span><span style="flex:1"></span><button id="share"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span id="sharelbl">Copy link</span></button></div>
+  <div class="quick" id="quick"><button id="locate"><span class="i" data-icon="gps" data-size="13"></span>Use my location</button><span>·</span><span>tap the map or a building</span><span style="flex:1"></span><button id="share"><span class="i" data-icon="link" data-size="13"></span><span id="sharelbl">Copy link</span></button></div>
 </section>
 
 <section id="nav" aria-label="Directions" hidden>
   <div class="navrow">
-    <button id="navprev" aria-label="Previous step"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button>
+    <button id="navprev" aria-label="Previous step"><span class="i" data-icon="chevronLeft" data-size="17"></span></button>
     <button id="navmain"><span class="mic" id="navic"></span><span class="tx"><span id="navtext"></span><small id="navsub"></small></span><span class="m" id="navm"></span></button>
-    <button id="navnext" aria-label="Next step"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg></button>
-    <button id="navlist" aria-expanded="false" aria-label="All steps"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 9 7 7 7-7"/></svg></button>
+    <button id="navnext" aria-label="Next step"><span class="i" data-icon="chevronRight" data-size="17"></span></button>
+    <button id="navlist" aria-expanded="false" aria-label="All steps"><span class="i" data-icon="chevronDown" data-size="17"></span></button>
   </div>
   <ol class="steps" id="steps" hidden></ol>
 </section>
@@ -44,7 +44,7 @@
 
 <section id="sheet" aria-label="Routes and settings" data-pos="half">
   <div class="handle" id="handle"></div>
-  <button id="tripbar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A67C12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 20V10a3 3 0 0 1 3-3h6"/><path d="m14 4 3 3-3 3"/></svg><span id="tripmain">Loading…</span><svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 7 4.5l4 4"/></svg></button>
+  <button id="tripbar"><span class="i tripic" data-icon="route" data-size="17"></span><span id="tripmain">Loading…</span><span class="i chev" data-icon="chevronDown" data-size="16"></span></button>
   <div id="sheetc">
   <div id="loadbox"></div>
   <div id="planner" hidden>

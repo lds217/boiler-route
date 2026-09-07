@@ -1,6 +1,7 @@
 import '@fontsource-variable/inter';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { hydrateIcons, icon } from './icons';
 import './style.css';
 
 import campusOverrides from '../../campus-overrides.json';
@@ -18,6 +19,8 @@ import { computeShade } from '../shade';
 import { sunPosition } from '../sun';
 import type { CampusOverrides, Edge, HeightsData, Model, OsmData, Place, RouteContext, Wind } from '../types';
 import { loadWeather, weatherAt, type WeatherState } from '../weather';
+
+hydrateIcons();
 
 const proj = createProjection(BBOX);
 const CAMPUS = { lat: proj.centerLat, lon: proj.centerLon };
@@ -43,7 +46,7 @@ const esc = (s: unknown): string => String(s).replace(/[&<>"]/g, (c) => ({ '&': 
 const fmtMin = (s: number): string => { const m = Math.round(s / 60); return m < 1 ? '<1 min' : `${m} min`; };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const sunColor = (f: number) => {
-  const c1 = [79, 113, 134], c2 = [226, 87, 43];
+  const c1 = [85, 89, 96], c2 = [218, 170, 0]; // Steel → Rush
   return `rgb(${c1.map((v, i) => Math.round(lerp(v, c2[i], f))).join(',')})`;
 };
 const ll = (p: { x: number; y: number }): [number, number] => proj.ll(p);
@@ -70,11 +73,11 @@ const netLayer = L.layerGroup();
 const routeLayer = L.layerGroup().addTo(map);
 const bldLayer = L.layerGroup().addTo(map);
 const pinLayer = L.layerGroup().addTo(map);
-L.rectangle([[BBOX[0], BBOX[1]], [BBOX[2], BBOX[3]]], { color: '#221E19', weight: 1, dashArray: '4 6', fill: false, interactive: false }).addTo(map);
+L.rectangle([[BBOX[0], BBOX[1]], [BBOX[2], BBOX[3]]], { color: '#555960', weight: 1, dashArray: '4 6', fill: false, interactive: false }).addTo(map);
 const bldShapes: Record<string, L.Polygon> = {};
 
 const GROUND_FILL: Record<string, string> = {
-  green: '#D3DABF', wood: '#BFCBA8', water: '#B7CBD9', parking: '#DCD8CE', pitch: '#CBD8C2', sand: '#E7DFC8', dirt: '#DDD5C5',
+  green: '#DCDCC6', wood: '#CBCFB2', water: '#C4D6D3', parking: '#E3DFD2', pitch: '#D5D9C0', sand: '#EBD99F', dirt: '#DED7C6',
 };
 function drawBasemap() {
   groundLayer.clearLayers();
@@ -84,8 +87,8 @@ function drawBasemap() {
   for (const s of basemap.lines) {
     const style = s.klass === 'major' ? { color: '#FFFFFF', weight: 9, opacity: 0.95 }
       : s.klass === 'minor' ? { color: '#FFFFFF', weight: 7, opacity: 0.9 }
-      : s.klass === 'service' ? { color: '#F2EFE7', weight: 4, opacity: 0.9 }
-      : { color: '#DAD4C6', weight: 2, opacity: 0.9, dashArray: undefined };
+      : s.klass === 'service' ? { color: '#F6F3EA', weight: 4, opacity: 0.9 }
+      : { color: '#D8D0BE', weight: 2, opacity: 0.9, dashArray: undefined };
     const line = L.polyline(s.pts.map(ll), { pane: 'base', interactive: false, ...style }).addTo(groundLayer);
     if (s.name && s.klass !== 'walk')
       line.bindTooltip(s.name, { permanent: false, direction: 'center', className: 'st' });
@@ -100,8 +103,8 @@ function buildNet() {
   for (const e of model.edges) {
     const A = ll(model.nodes[e.a]), B = ll(model.nodes[e.b]);
     const st = e.kind === 'outdoor'
-      ? { color: e.connector ? '#C9B98A' : '#8E877A', weight: 1.2, opacity: 0.7 }
-      : { color: '#A67C12', weight: 2, dashArray: '4 4', opacity: 0.9 };
+      ? { color: e.connector ? '#CEB888' : '#8B8D8E', weight: 1.2, opacity: 0.7 }
+      : { color: '#8E6F3E', weight: 2, dashArray: '4 4', opacity: 0.9 };
     L.polyline([A, B], { pane: 'net', ...st }).addTo(netLayer);
   }
 }
@@ -111,14 +114,14 @@ function drawModel() {
   for (const b of model.buildings) {
     // Off-campus buildings are scenery: muted, unlabeled, clicks fall through to the map.
     const poly = L.polygon(b.ring.map(ll), b.campus
-      ? { color: '#8F8779', weight: 1, fillColor: '#CBC5B7', fillOpacity: 0.85, bubblingMouseEvents: false }
-      : { color: '#A9A396', weight: 0.8, fillColor: '#DDD9CF', fillOpacity: 0.6, interactive: false }).addTo(bldLayer);
+      ? { color: '#A79470', weight: 1, fillColor: '#E0D6BE', fillOpacity: 0.85, bubblingMouseEvents: false }
+      : { color: '#B4AFA3', weight: 0.8, fillColor: '#E4E1D9', fillOpacity: 0.6, interactive: false }).addTo(bldLayer);
     if (b.campus && b.named) poly.bindTooltip(b.abbr, { permanent: true, direction: 'center', className: 'bl' });
     if (b.campus) poly.on('click', () => { if (b.named) setPlace({ kind: 'building', id: b.id, label: `${b.abbr}  ${b.name}` }); });
     bldShapes[b.id] = poly;
   }
   for (const t of model.trees)
-    L.circle(ll(t.c), { radius: t.r, color: '#7F9569', weight: 1, fillColor: '#A9B992', fillOpacity: 0.7, interactive: false }).addTo(bldLayer);
+    L.circle(ll(t.c), { radius: t.r, color: '#93A07E', weight: 1, fillColor: '#C6CEB4', fillOpacity: 0.7, interactive: false }).addTo(bldLayer);
 }
 
 map.on('click', (e) => { const p = pointAt(e.latlng); if (p) setPlace(p); });
@@ -345,7 +348,7 @@ $('locate').onclick = locate;
 const locBtn = document.createElement('button');
 locBtn.id = 'locbtn';
 locBtn.setAttribute('aria-label', 'Show my location');
-locBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5"/></svg>';
+locBtn.innerHTML = icon('crosshair', 21);
 document.body.appendChild(locBtn);
 locBtn.onclick = showMyLocation;
 
@@ -459,21 +462,7 @@ $('minibar').onclick = () => { $('search').classList.remove('mini'); syncTop(); 
 /* ================= directions banner (always visible above the map) ================= */
 type Step = ReturnType<typeof directions>[number];
 let navSteps: Step[] = [], navI = 0;
-/** Google-Maps-style maneuver glyphs, drawn on a 24×24 grid. */
-const MANEUVER: Record<string, string> = {
-  start: '<circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.5"/>',
-  straight: '<path d="M12 21V5"/><path d="m6.5 10.5 5.5-5.5 5.5 5.5"/>',
-  left: '<path d="M18 21v-8a4 4 0 0 0-4-4H6"/><path d="m10.5 4.5-5.5 4.5 5.5 4.5"/>',
-  right: '<path d="M6 21v-8a4 4 0 0 1 4-4h8"/><path d="m13.5 4.5 5.5 4.5-5.5 4.5"/>',
-  uturn: '<path d="M8 21V10a4.5 4.5 0 0 1 9 0v3"/><path d="m12.5 17 4.5 4.5 4.5-4.5"/>',
-  cross: '<path d="M5 20 9 4M11 20l4-16M17 20l4-16" stroke-dasharray="3 3"/>',
-  exit: '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h8"/><path d="M11 12h10"/><path d="m17.5 7.5 4.5 4.5-4.5 4.5"/>',
-  arrive: '<path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
-  through: '<path d="M4 20V8l7-4 7 4v12"/><path d="M4 20h16"/><path d="M8 20v-6h6v6"/>',
-  link: '<path d="M3 16h18"/><path d="M6 16V9M18 16V9"/><path d="M3 9c4-3 14-3 18 0"/>',
-};
-const maneuverSvg = (m: string) =>
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MANEUVER[m] ?? MANEUVER.straight}</svg>`;
+const maneuverSvg = (m: string) => icon(m === 'link' ? 'bridge' : m, 21);
 const topEl = $('top');
 function syncTop() { document.documentElement.style.setProperty('--toph', topEl.offsetHeight + 'px'); }
 new ResizeObserver(syncTop).observe(topEl);
@@ -504,7 +493,7 @@ function goStep(i: number) {
   if (!s) return;
   const c = ll(s.at);
   map.setView(c, Math.max(map.getZoom(), 18), { animate: true });
-  if (!turnDot) turnDot = L.circleMarker(c, { pane: 'routes', radius: 9, color: '#221E19', weight: 3, fillColor: '#FBFAF6', fillOpacity: 1, interactive: false }).addTo(map);
+  if (!turnDot) turnDot = L.circleMarker(c, { pane: 'routes', radius: 9, color: '#191817', weight: 3, fillColor: '#FCFBF7', fillOpacity: 1, interactive: false }).addTo(map);
   else turnDot.setLatLng(c);
 }
 $('navprev').onclick = () => goStep(navI - 1);
@@ -584,12 +573,12 @@ function update() {
   // One multipolygon = one canvas path: much cheaper than hundreds of layers, and
   // overlapping shadows no longer double-darken.
   if (shadows.length)
-    L.polygon(shadows.map((h) => [h.map(ll)]), { pane: 'shadow', stroke: false, fillColor: '#221E19', fillOpacity: 0.16, interactive: false }).addTo(shadowLayer);
+    L.polygon(shadows.map((h) => [h.map(ll)]), { pane: 'shadow', stroke: false, fillColor: '#191817', fillOpacity: 0.16, interactive: false }).addTo(shadowLayer);
 
   const open = computeOpen(model.buildings, date.getDay(), mins / 60);
   for (const b of model.buildings) {
     if (!b.campus) continue; // scenery keeps its muted style
-    bldShapes[b.id]?.setStyle({ fillColor: open[b.id] ? '#CBC5B7' : '#DDD8CD', dashArray: open[b.id] ? undefined : '3 3' });
+    bldShapes[b.id]?.setStyle({ fillColor: open[b.id] ? '#E0D6BE' : '#E9E5D9', dashArray: open[b.id] ? undefined : '3 3' });
     const tipEl = bldShapes[b.id]?.getTooltip()?.getElement();
     tipEl?.classList.toggle('closed', !open[b.id]);
   }
@@ -695,9 +684,9 @@ function renderRoutes() {
   const draw = (path: Edge[], hi: boolean) => {
     for (const e of path) {
       const A = ll(model!.nodes[e.a]), B = ll(model!.nodes[e.b]);
-      if (!hi) { L.polyline([A, B], { pane: 'routes', color: '#221E19', weight: 2, opacity: 0.35, dashArray: '2 6' }).addTo(routeLayer); continue; }
-      const color = e.kind === 'outdoor' ? sunColor(ctx.sunFrac[e.id]) : '#A67C12';
-      L.polyline([A, B], { pane: 'routes', color: '#FBFAF6', weight: 9, opacity: 0.9 }).addTo(routeLayer);
+      if (!hi) { L.polyline([A, B], { pane: 'routes', color: '#555960', weight: 2, opacity: 0.35, dashArray: '2 6' }).addTo(routeLayer); continue; }
+      const color = e.kind === 'outdoor' ? sunColor(ctx.sunFrac[e.id]) : '#8E6F3E';
+      L.polyline([A, B], { pane: 'routes', color: '#FCFBF7', weight: 9, opacity: 0.9 }).addTo(routeLayer);
       L.polyline([A, B], { pane: 'routes', color, weight: 5, opacity: 1, dashArray: e.kind === 'outdoor' ? undefined : '1 8', lineCap: 'round' }).addTo(routeLayer);
     }
   };
