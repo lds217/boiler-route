@@ -476,7 +476,9 @@ document.body.appendChild(safeProbe);
 function visFor(p: SheetPos): number {
   if (p === 'full') return sheetEl.getBoundingClientRect().height;
   if (p === 'half') return Math.min(window.innerHeight * 0.5, 430);
-  return 21 + $('tripbar').offsetHeight + safeProbe.offsetHeight; // handle + trip bar
+  // measured, not hardcoded: everything above the trip bar plus the bar itself
+  const tb = $('tripbar');
+  return tb.offsetTop + tb.offsetHeight + safeProbe.offsetHeight;
 }
 function applySheet() {
   sheetEl.dataset.pos = sheetPos;

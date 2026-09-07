@@ -106,11 +106,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #sheet.drag{transition:none}
 #sheetc{flex:1;min-height:0;overflow:hidden;padding:0 16px 16px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 #sheet[data-pos=full] #sheetc{overflow-y:auto;touch-action:pan-y;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
-.handle{width:56px;height:5px;border-radius:3px;background:var(--line);margin:10px auto 6px;cursor:grab;position:relative;flex:none;touch-action:none}
+.handle{width:44px;height:4px;border-radius:2px;background:var(--line);margin:7px auto 3px;cursor:grab;position:relative;flex:none;touch-action:none}
 .handle::before{content:"";position:absolute;inset:-14px -60px;/* generous touch target */}
 #tripbar{display:none;flex:none;align-items:center;gap:8px;width:100%;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer;
-  padding:2px 16px 12px;font-size:13px;color:var(--muted);touch-action:none}
-#tripbar b{color:var(--ink);font-size:17px}
+  padding:0 14px 9px;font-size:12px;color:var(--muted);touch-action:none}
+#tripbar b{color:var(--ink);font-size:15px}
 #tripbar svg{flex:none}
 #tripbar .chev{margin-left:auto;color:var(--muted);flex:none}
 @media (max-width:819px){#tripbar{display:flex}}
@@ -180,14 +180,14 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
   .handle{display:none}
 }
 
-#locbtn{position:fixed;right:12px;bottom:calc(116px + env(safe-area-inset-bottom));z-index:5;width:44px;height:44px;border-radius:50%;
+#locbtn{position:fixed;right:12px;bottom:calc(98px + env(safe-area-inset-bottom));z-index:5;width:44px;height:44px;border-radius:50%;
   background:rgba(252,251,247,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   border:1px solid var(--line);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer;color:var(--aged)}
 #locbtn:active{background:var(--soft)}
 @media (min-width:820px){#locbtn{right:16px;bottom:24px}}
 
 /* toast: status feedback that stays visible whatever the sheet is doing */
-#toast{position:fixed;left:12px;right:12px;bottom:calc(122px + env(safe-area-inset-bottom));z-index:9;background:var(--ink);color:#fff;
+#toast{position:fixed;left:12px;right:12px;bottom:calc(104px + env(safe-area-inset-bottom));z-index:9;background:var(--ink);color:#fff;
   border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.4;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.show{opacity:.96;pointer-events:auto}
 #toast b{color:#fff}#toast code{color:#FFD9A8;font-size:12px}
