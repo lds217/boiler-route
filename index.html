@@ -37,12 +37,13 @@
   <div id="loadbox"></div>
   <div id="planner" hidden>
     <div class="routes" id="routes"></div>
-    <div class="ctl comfy" id="comfyctl"><label for="comfort">Detour for comfort</label><output id="comfortout" for="comfort"></output>
-      <input type="range" id="comfort" min="0" max="100" step="5" value="70"><div class="ends"><span>Fastest</span><span>Most comfortable</span></div></div>
-    <div class="legend"><span class="in">Inside</span><span class="sh">Outside, shade</span><span class="su">Outside, sun</span></div>
     <div id="warn"></div>
 
     <details id="dirbox" open><summary>Directions <span class="cur" id="dircur"></span></summary><ol class="steps" id="steps"></ol></details>
+
+    <div class="ctl comfy" id="comfyctl"><label for="comfort">Detour for comfort</label><output id="comfortout" for="comfort"></output>
+      <input type="range" id="comfort" min="0" max="100" step="5" value="70"><div class="ends"><span>Fastest</span><span>Most comfortable</span></div></div>
+    <div class="legend"><span class="in">Inside</span><span class="sh">Outside, shade</span><span class="su">Outside, sun</span></div>
 
     <details open id="condbox">
       <summary>Conditions <span class="cur" id="condcur"></span></summary>

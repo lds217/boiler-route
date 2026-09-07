@@ -25,21 +25,22 @@ button,select,input,summary,.route,ol.steps li{touch-action:manipulation}
 /* search card (top) */
 #search{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:58px;z-index:7;border-radius:16px;box-shadow:var(--shadow);padding:8px 10px 8px 12px;
   background:rgba(251,250,246,.88);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px)}
-.brandline{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);padding:0 2px 6px}
-.brandline b{color:var(--ink);font-weight:700;font-size:13px}
+.brandline{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);padding:0 2px 5px}
+.brandline b{color:var(--ink);font-weight:700;font-size:12px}
 .sun{display:flex;align-items:center;gap:6px}
 .sun svg{width:16px;height:16px}
 .fields{display:grid;grid-template-columns:1fr auto;gap:0 6px;align-items:stretch}
 .stack{display:flex;flex-direction:column;gap:6px;position:relative}
-.sfield{position:relative;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:0 6px 0 10px}
-.sfield:focus-within{border-color:var(--ink)}
+/* iOS-style filled fields: quiet gray at rest, white with an ink ring when active */
+.sfield{position:relative;display:flex;align-items:center;gap:8px;background:var(--soft);border:1px solid transparent;border-radius:12px;padding:0 6px 0 10px}
+.sfield:focus-within{border-color:var(--ink);background:#fff}
 .dot{width:10px;height:10px;border-radius:50%;flex:none;border:2px solid var(--ink);background:#fff}
 .dot.d{background:var(--ink)}
 .sfield input{flex:1;border:0;background:transparent;font:inherit;font-weight:600;padding:10px 0;min-width:0;outline:none;color:var(--ink)}
 .sfield input::placeholder{font-weight:500;color:#9A948A}
 .sfield .clear{border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;width:28px;height:28px;border-radius:50%;cursor:pointer;display:none}
 .sfield.has .clear{display:block}
-.swap{align-self:center;border:1px solid var(--line);background:#fff;border-radius:10px;width:38px;height:38px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.swap{align-self:center;border:0;background:var(--soft);border-radius:12px;width:38px;height:38px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
 .swap:hover{color:var(--ink)}
 .sugg{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:9;overflow:hidden;display:none;max-height:260px;overflow-y:auto}
 .sugg.open{display:block}
@@ -114,7 +115,7 @@ ol.steps small{display:block;color:var(--muted);font-size:12px}
 .ctl input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--gold);box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .ctl .ends{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
 /* the comfort slider lives with the route cards, Google-Maps style */
-#comfyctl{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 14px 8px;margin:0 0 8px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+#comfyctl{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 14px 8px;margin:10px 0 8px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 #comfyctl label{font-weight:600}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 0}
 .field{display:flex;flex-direction:column;gap:4px}.field label{font-size:12px;color:var(--muted)}
@@ -160,12 +161,13 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
 @media (max-width:819px){
   /* 16px inputs stop iOS Safari from zooming the page on focus */
   .sfield input,select,input[type=date]{font-size:16px}
-  .sfield input{padding:12px 0}
+  .sfield input{padding:9px 0}
+  .stack{gap:5px}
+  .quick{padding-top:5px;font-size:11px}
   .sugg button{padding:12px}
   ol.steps li{padding:11px 4px}
   .btn{padding:11px 14px;min-height:44px}
   .toggle{padding:9px 0}.toggle input{width:20px;height:20px}
-  .quick{padding-top:8px}
   .quick button{padding:4px 0}
   .route{padding:12px}
   summary{padding:10px 0}
