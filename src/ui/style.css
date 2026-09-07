@@ -32,10 +32,18 @@ button,select,input,summary,.route,ol.steps li{touch-action:manipulation}
   -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);overflow:hidden}
 .navrow{display:flex;align-items:stretch}
 .navrow button{border:0;background:transparent;font:inherit;color:var(--ink);cursor:pointer;display:flex;align-items:center}
-#navprev,#navnext{flex:none;width:40px;justify-content:center;color:var(--muted)}
+#navprev,#navnext,#navlist{flex:none;width:36px;justify-content:center;color:var(--muted)}
 #navprev:disabled,#navnext:disabled{opacity:.25;cursor:default}
+#navlist[aria-expanded=true] svg{transform:rotate(180deg)}
 #navmain{flex:1;min-width:0;gap:10px;text-align:left;padding:10px 2px}
-#navmain .ic{width:20px;height:20px;border-radius:50%;flex:none}
+#navmain:active{background:var(--soft)}
+/* maneuver arrow, tinted by how sunny that stretch is */
+.mic{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--soft)}
+.mic svg{width:21px;height:21px}
+.mic.su{color:var(--sun);background:#FBE7DE}
+.mic.sh{color:var(--shade);background:#E2EAEF}
+.mic.mx{color:#8A6A55;background:#EFE7E0}
+.mic.in{color:var(--gold);background:#F3EAD3}
 #navmain .tx{flex:1;min-width:0;font-weight:600;line-height:1.25}
 #navmain .tx small{display:block;font-weight:500;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #navmain .m{flex:none;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;padding-right:2px}
@@ -115,8 +123,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .tabnote{font-size:13px;color:var(--muted);margin:0 0 6px;font-variant-numeric:tabular-nums}
 summary .cur{font-weight:500;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;text-align:right}
 ol.steps{list-style:none;margin:0;padding:0}
-ol.steps li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;padding:8px 4px;border-bottom:1px solid var(--soft);cursor:pointer;font-size:14px}
+ol.steps li{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--soft);cursor:pointer;font-size:14px}
 ol.steps li:hover{background:var(--soft)}
+ol.steps .mic{width:30px;height:30px}
+ol.steps .mic svg{width:18px;height:18px}
 ol.steps .ic{width:18px;height:18px;border-radius:50%;margin-top:2px}
 ol.steps .ic.in{background:var(--gold)}.ic.su{background:var(--sun)}.ic.sh{background:var(--shade)}.ic.mx{background:linear-gradient(90deg,var(--shade),var(--sun))}
 ol.steps .m{color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}

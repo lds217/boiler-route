@@ -1,7 +1,7 @@
 import { angDiff, bearingDeg, compass8 } from './geometry';
-import type { DirectionStep, DoorSpec, Edge, Model, RouteContext, XY } from './types';
+import type { DirectionStep, DoorSpec, Edge, Maneuver, Model, RouteContext, XY } from './types';
 
-interface WalkGroup { type: 'walk'; verb: string; name: string | null; len: number; sunLen: number; lastBr: number; start: XY }
+interface WalkGroup { type: 'walk'; verb: string; turn: Maneuver; name: string | null; len: number; sunLen: number; lastBr: number; start: XY }
 interface CrossGroup { type: 'cross'; street?: string; ctype: string; len: number; start: XY; lastBr: number }
 interface InsideGroup { type: 'inside'; bld: string; len: number; start: XY; enter: string | null; exit: string | null; fromHub: boolean; toHub: boolean }
 interface LinkGroup { type: 'link'; kind: string | null; len: number; start: XY; to: string | null; verified?: boolean }
@@ -39,13 +39,14 @@ export function directions(model: Model, path: Edge[], srcNode: string, ctx: Rou
         if (nm && !g.name) g.name = nm;
         continue;
       }
-      let verb = 'Head ' + compass8(br);
+      let verb = 'Head ' + compass8(br), turn: Maneuver = 'start';
       if (g && (g.type === 'walk' || g.type === 'cross')) {
         const d = angDiff(g.lastBr, br);
-        verb = Math.abs(d) >= 150 ? 'Turn around' : Math.abs(d) < 35 ? 'Continue' : d > 0 ? 'Turn right' : 'Turn left';
+        turn = Math.abs(d) >= 150 ? 'uturn' : Math.abs(d) < 35 ? 'straight' : d > 0 ? 'right' : 'left';
+        verb = turn === 'uturn' ? 'Turn around' : turn === 'straight' ? 'Continue' : turn === 'right' ? 'Turn right' : 'Turn left';
       }
       flush();
-      g = { type: 'walk', verb, name: nm, len: e.len, sunLen: e.len * sun, lastBr: br, start: A };
+      g = { type: 'walk', verb, turn, name: nm, len: e.len, sunLen: e.len * sun, lastBr: br, start: A };
     } else if (e.kind === 'indoor') {
       if (g && g.type === 'inside' && g.bld === e.bld) { g.len += e.len; g.exit = doorText(e, to); g.toHub = B.kind === 'hub'; continue; }
       flush();
@@ -67,7 +68,7 @@ export function directions(model: Model, path: Edge[], srcNode: string, ctx: Rou
       const f = s.len ? s.sunLen / s.len : 0;
       const sub = s.len > 25 ? (f > 0.66 ? 'mostly in sun' : f < 0.33 ? 'mostly shaded' : 'sun and shade') : '';
       const join = s.verb.startsWith('Head') ? ' along ' : ' onto ';
-      return { icon: f > 0.66 ? 'su' : f < 0.33 ? 'sh' : 'mx', text: s.verb + (s.name ? join + s.name : ''), sub, m, at: s.start };
+      return { icon: f > 0.66 ? 'su' : f < 0.33 ? 'sh' : 'mx', maneuver: s.turn, text: s.verb + (s.name ? join + s.name : ''), sub, m, at: s.start };
     }
     if (s.type === 'cross') {
       const how = ({
@@ -75,23 +76,23 @@ export function directions(model: Model, path: Edge[], srcNode: string, ctx: Rou
         plain: 'at the crossing', jaywalk: 'no crossing mapped here, take care',
       } as Record<string, string>)[s.ctype];
       return {
-        icon: s.ctype === 'jaywalk' ? 'su' : 'sh',
+        icon: s.ctype === 'jaywalk' ? 'su' : 'sh', maneuver: 'cross',
         text: `Cross ${s.street || 'the street'}`, sub: how, m, at: s.start,
         warn: s.ctype === 'jaywalk',
       };
     }
     if (s.type === 'inside') {
       const ab = model.byId[s.bld].abbr;
-      let text: string, sub = '';
-      if (s.fromHub && s.toHub) text = `Stay inside ${ab}`;
-      else if (s.fromHub) { text = `Leave ${ab}`; sub = s.exit ? `through ${s.exit}` : ''; }
-      else if (s.toHub) { text = `Enter ${ab}`; sub = (s.enter ? `through ${s.enter}, ` : '') + 'you have arrived'; }
-      else { text = `Cut through ${ab}`; sub = `in ${s.enter || 'one door'}, out ${s.exit || 'another'}`; }
-      return { icon: 'in', text, sub, m, at: s.start };
+      let text: string, sub = '', maneuver: Maneuver;
+      if (s.fromHub && s.toHub) { text = `Stay inside ${ab}`; maneuver = 'straight'; }
+      else if (s.fromHub) { text = `Leave ${ab}`; sub = s.exit ? `through ${s.exit}` : ''; maneuver = 'exit'; }
+      else if (s.toHub) { text = `Enter ${ab}`; sub = (s.enter ? `through ${s.enter}, ` : '') + 'you have arrived'; maneuver = 'arrive'; }
+      else { text = `Cut through ${ab}`; sub = `in ${s.enter || 'one door'}, out ${s.exit || 'another'}`; maneuver = 'through'; }
+      return { icon: 'in', maneuver, text, sub, m, at: s.start };
     }
     const ab = s.to ? model.byId[s.to].abbr : null;
     return {
-      icon: 'in', text: `Take the ${s.kind}${ab ? ' to ' + ab : ''}`,
+      icon: 'in', maneuver: 'link', text: `Take the ${s.kind}${ab ? ' to ' + ab : ''}`,
       sub: s.verified === false ? 'not verified on foot' : '', m, at: s.start,
     };
   });

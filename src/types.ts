@@ -200,8 +200,12 @@ export interface RouteSummary {
   assumedDoors: number;
 }
 
+export type Maneuver = 'start' | 'straight' | 'left' | 'right' | 'uturn' | 'cross' | 'exit' | 'arrive' | 'through' | 'link';
+
 export interface DirectionStep {
   icon: 'su' | 'sh' | 'mx' | 'in';
+  /** What the walker physically does, for the turn arrow in the UI. */
+  maneuver: Maneuver;
   text: string;
   sub: string;
   m: number;

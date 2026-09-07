@@ -459,35 +459,62 @@ $('minibar').onclick = () => { $('search').classList.remove('mini'); syncTop(); 
 /* ================= directions banner (always visible above the map) ================= */
 type Step = ReturnType<typeof directions>[number];
 let navSteps: Step[] = [], navI = 0;
+/** Google-Maps-style maneuver glyphs, drawn on a 24×24 grid. */
+const MANEUVER: Record<string, string> = {
+  start: '<circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.5"/>',
+  straight: '<path d="M12 21V5"/><path d="m6.5 10.5 5.5-5.5 5.5 5.5"/>',
+  left: '<path d="M18 21v-8a4 4 0 0 0-4-4H6"/><path d="m10.5 4.5-5.5 4.5 5.5 4.5"/>',
+  right: '<path d="M6 21v-8a4 4 0 0 1 4-4h8"/><path d="m13.5 4.5 5.5 4.5-5.5 4.5"/>',
+  uturn: '<path d="M8 21V10a4.5 4.5 0 0 1 9 0v3"/><path d="m12.5 17 4.5 4.5 4.5-4.5"/>',
+  cross: '<path d="M5 20 9 4M11 20l4-16M17 20l4-16" stroke-dasharray="3 3"/>',
+  exit: '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h8"/><path d="M11 12h10"/><path d="m17.5 7.5 4.5 4.5-4.5 4.5"/>',
+  arrive: '<path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  through: '<path d="M4 20V8l7-4 7 4v12"/><path d="M4 20h16"/><path d="M8 20v-6h6v6"/>',
+  link: '<path d="M3 16h18"/><path d="M6 16V9M18 16V9"/><path d="M3 9c4-3 14-3 18 0"/>',
+};
+const maneuverSvg = (m: string) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MANEUVER[m] ?? MANEUVER.straight}</svg>`;
 const topEl = $('top');
 function syncTop() { document.documentElement.style.setProperty('--toph', topEl.offsetHeight + 'px'); }
 new ResizeObserver(syncTop).observe(topEl);
 function renderNav() {
   const nav = $('nav');
-  if (!navSteps.length) { nav.hidden = true; return; }
+  if (!navSteps.length) {
+    nav.hidden = true;
+    if (turnDot) { map.removeLayer(turnDot); turnDot = null; }
+    return;
+  }
   nav.hidden = false;
   navI = Math.min(Math.max(navI, 0), navSteps.length - 1);
   const s = navSteps[navI];
-  $('navic').className = 'ic ' + s.icon;
+  $('navic').className = 'mic ' + s.icon;
+  $('navic').innerHTML = maneuverSvg(s.maneuver);
   $('navtext').textContent = s.text;
-  $('navsub').textContent = s.sub || `Step ${navI + 1} of ${navSteps.length}`;
+  $('navsub').textContent = `${navI + 1}/${navSteps.length}${s.sub ? ' · ' + s.sub : ''} · tap to see the turn`;
   $('navm').textContent = `${s.m} m`;
   ($('navprev') as HTMLButtonElement).disabled = navI === 0;
   ($('navnext') as HTMLButtonElement).disabled = navI === navSteps.length - 1;
   $('steps').querySelectorAll('li').forEach((li) => li.setAttribute('aria-current', String(+li.dataset.i! === navI)));
 }
+let turnDot: L.CircleMarker | null = null;
 function goStep(i: number) {
   navI = i;
   renderNav();
   const s = navSteps[navI];
-  if (s) map.setView(ll(s.at), Math.max(map.getZoom(), 18));
+  if (!s) return;
+  const c = ll(s.at);
+  map.setView(c, Math.max(map.getZoom(), 18), { animate: true });
+  if (!turnDot) turnDot = L.circleMarker(c, { pane: 'routes', radius: 9, color: '#221E19', weight: 3, fillColor: '#FBFAF6', fillOpacity: 1, interactive: false }).addTo(map);
+  else turnDot.setLatLng(c);
 }
 $('navprev').onclick = () => goStep(navI - 1);
 $('navnext').onclick = () => goStep(navI + 1);
-$('navmain').onclick = () => {
+// tapping the step flies to that turn and drops a marker on it
+$('navmain').onclick = () => goStep(navI);
+$('navlist').onclick = () => {
   const list = $('steps'), open = list.hidden;
   list.hidden = !open;
-  $('navmain').setAttribute('aria-expanded', String(open));
+  $('navlist').setAttribute('aria-expanded', String(open));
   if (open) list.querySelector('li[aria-current=true]')?.scrollIntoView({ block: 'center' });
 };
 
@@ -680,7 +707,7 @@ function renderRoutes() {
   const steps = directions(model, shownPath, src, ctx);
   const ss = summarize(shownPath, ctx);
   setTrip(`<b>${fmtMin(ss.time)}</b> · arrive ${fmtClock((ctx.mins + Math.round(ss.time / 60)) % 1440)} · ${shown === 'fast' ? 'fastest' : 'comfortable'} route`);
-  $('steps').innerHTML = steps.map((s, i) => `<li data-i="${i}"${s.warn ? ' style="background:#FFF4E5"' : ''}><span class="ic ${s.icon}"></span><span>${esc(s.text)}${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span><span class="m">${s.m} m</span></li>`).join('');
+  $('steps').innerHTML = steps.map((s, i) => `<li data-i="${i}"${s.warn ? ' style="background:#FFF4E5"' : ''}><span class="mic ${s.icon}">${maneuverSvg(s.maneuver)}</span><span>${esc(s.text)}${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span><span class="m">${s.m} m</span></li>`).join('');
   $('steps').querySelectorAll('li').forEach((li) => (li.onclick = () => goStep(+li.dataset.i!)));
   const sameRoute = navSteps.length === steps.length && navSteps.every((s, i) => s.text === steps[i].text);
   navSteps = steps;
