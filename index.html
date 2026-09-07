@@ -17,6 +17,7 @@
 
 <div id="map" role="application" aria-label="Campus map"></div>
 
+<div id="top">
 <section id="search" aria-label="Route search">
   <button id="minibar" aria-label="Edit route"></button>
   <div class="brandline"><b>Boiler Route</b><span class="sun" id="suntext"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="#E2572B"/><g stroke="#E2572B" stroke-width="1.6" stroke-linecap="round"><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></g></svg><span>Loading</span></span></div>
@@ -27,8 +28,18 @@
     </div>
     <button class="swap" id="swap" title="Swap" aria-label="Swap start and destination"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v10M1.5 9.5 4 12l2.5-2.5M12 14V4M9.5 6.5 12 4l2.5 2.5"/></svg></button>
   </div>
-  <div class="quick"><button id="locate"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 3 3 10.5l7.5 3 3 7.5z"/></svg>Use my location</button><span>·</span><span>tap the map or a building</span><span style="flex:1"></span><button id="share"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span id="sharelbl">Copy link</span></button></div>
+  <div class="quick" id="quick"><button id="locate"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 3 3 10.5l7.5 3 3 7.5z"/></svg>Use my location</button><span>·</span><span>tap the map or a building</span><span style="flex:1"></span><button id="share"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span id="sharelbl">Copy link</span></button></div>
 </section>
+
+<section id="nav" aria-label="Directions" hidden>
+  <div class="navrow">
+    <button id="navprev" aria-label="Previous step"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button>
+    <button id="navmain" aria-expanded="false"><span class="ic" id="navic"></span><span class="tx"><span id="navtext"></span><small id="navsub"></small></span><span class="m" id="navm"></span></button>
+    <button id="navnext" aria-label="Next step"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg></button>
+  </div>
+  <ol class="steps" id="steps" hidden></ol>
+</section>
+</div>
 
 <section id="sheet" aria-label="Routes and settings" data-pos="half">
   <div class="handle" id="handle"></div>
@@ -36,17 +47,22 @@
   <div id="sheetc">
   <div id="loadbox"></div>
   <div id="planner" hidden>
-    <div class="routes" id="routes"></div>
-    <div id="warn"></div>
+    <div class="seg" id="tabs" role="tablist">
+      <button type="button" data-tab="route" aria-selected="true">Route</button>
+      <button type="button" data-tab="cond" aria-selected="false">Conditions</button>
+      <button type="button" data-tab="data" aria-selected="false">Data</button>
+    </div>
 
-    <details id="dirbox" open><summary>Directions <span class="cur" id="dircur"></span></summary><ol class="steps" id="steps"></ol></details>
+    <div class="tabp" id="tab-route">
+      <div class="routes" id="routes"></div>
+      <div id="warn"></div>
+      <div class="ctl comfy" id="comfyctl"><label for="comfort">Detour for comfort</label><output id="comfortout" for="comfort"></output>
+        <input type="range" id="comfort" min="0" max="100" step="5" value="70"><div class="ends"><span>Fastest</span><span>Most comfortable</span></div></div>
+      <div class="legend"><span class="in">Inside</span><span class="sh">Outside, shade</span><span class="su">Outside, sun</span></div>
+    </div>
 
-    <div class="ctl comfy" id="comfyctl"><label for="comfort">Detour for comfort</label><output id="comfortout" for="comfort"></output>
-      <input type="range" id="comfort" min="0" max="100" step="5" value="70"><div class="ends"><span>Fastest</span><span>Most comfortable</span></div></div>
-    <div class="legend"><span class="in">Inside</span><span class="sh">Outside, shade</span><span class="su">Outside, sun</span></div>
-
-    <details open id="condbox">
-      <summary>Conditions <span class="cur" id="condcur"></span></summary>
+    <div class="tabp" id="tab-cond" hidden>
+      <p class="tabnote" id="condcur"></p>
       <div class="wx" id="wx">Fetching live weather…</div>
       <label class="toggle"><input type="checkbox" id="manual"> Set temperature, wind and clouds manually</label>
       <div class="row2">
@@ -69,10 +85,9 @@
         <div class="field"><label for="basemap">Basemap</label><select id="basemap"><option value="builtin" selected>Built-in (from OSM data)</option><option value="tiles">OSM tiles</option><option value="none">None</option></select></div>
         <div class="field"><label for="shownet" style="visibility:hidden">Network</label><label class="toggle" style="padding:9px 0"><input type="checkbox" id="shownet"> Walkable network</label></div>
       </div>
-    </details>
+    </div>
 
-    <details>
-      <summary>Where the data comes from</summary>
+    <div class="tabp" id="tab-data" hidden>
       <div id="datastats"></div>
       <ul class="data">
         <li><b>OpenStreetMap:</b> building outlines and names, sidewalks and paths, entrances, trees, ground cover, and footways tagged as tunnel, bridge or indoor corridor. Small gaps between mapped sidewalks are closed automatically. Data is bundled and refreshed weekly; Overpass is only queried when no bundle is present.</li>
@@ -84,7 +99,7 @@
         <li><b>Assumed:</b> height = levels × 3.5 m, else 12 m. Trees 10 m. Hours 7 am to 10 pm unless OSM has opening_hours (simple weekday rules are parsed).</li>
         <li><b>Not in OSM:</b> most Purdue skywalks and subwalks. Add them to <b>campus-overrides.json</b> after walking them.</li>
       </ul>
-    </details>
+    </div>
   </div>
   </div>
 </section>

@@ -454,7 +454,49 @@ function syncMini() {
   $('minibar').innerHTML = `${esc(short(origin))} <small>→</small> ${esc(short(dest))} <span class="edit">edit</span>`;
   $('search').classList.add('mini');
 }
-$('minibar').onclick = () => $('search').classList.remove('mini');
+$('minibar').onclick = () => { $('search').classList.remove('mini'); syncTop(); };
+
+/* ================= directions banner (always visible above the map) ================= */
+type Step = ReturnType<typeof directions>[number];
+let navSteps: Step[] = [], navI = 0;
+const topEl = $('top');
+function syncTop() { document.documentElement.style.setProperty('--toph', topEl.offsetHeight + 'px'); }
+new ResizeObserver(syncTop).observe(topEl);
+function renderNav() {
+  const nav = $('nav');
+  if (!navSteps.length) { nav.hidden = true; return; }
+  nav.hidden = false;
+  navI = Math.min(Math.max(navI, 0), navSteps.length - 1);
+  const s = navSteps[navI];
+  $('navic').className = 'ic ' + s.icon;
+  $('navtext').textContent = s.text;
+  $('navsub').textContent = s.sub || `Step ${navI + 1} of ${navSteps.length}`;
+  $('navm').textContent = `${s.m} m`;
+  ($('navprev') as HTMLButtonElement).disabled = navI === 0;
+  ($('navnext') as HTMLButtonElement).disabled = navI === navSteps.length - 1;
+  $('steps').querySelectorAll('li').forEach((li) => li.setAttribute('aria-current', String(+li.dataset.i! === navI)));
+}
+function goStep(i: number) {
+  navI = i;
+  renderNav();
+  const s = navSteps[navI];
+  if (s) map.setView(ll(s.at), Math.max(map.getZoom(), 18));
+}
+$('navprev').onclick = () => goStep(navI - 1);
+$('navnext').onclick = () => goStep(navI + 1);
+$('navmain').onclick = () => {
+  const list = $('steps'), open = list.hidden;
+  list.hidden = !open;
+  $('navmain').setAttribute('aria-expanded', String(open));
+  if (open) list.querySelector('li[aria-current=true]')?.scrollIntoView({ block: 'center' });
+};
+
+/* ================= sheet tabs ================= */
+$('tabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.onclick = () => {
+  for (const o of $('tabs').querySelectorAll('button')) o.setAttribute('aria-selected', String(o === b));
+  for (const t of ['route', 'cond', 'data']) ($('tab-' + t) as HTMLElement).hidden = t !== b.dataset.tab;
+  if (isMobile() && sheetPos === 'peek') setSheet('half');
+}));
 
 /* ================= conditions ================= */
 for (const id of ['date', 'tempn', 'wind', 'cloud', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk'])
@@ -526,7 +568,7 @@ function update() {
   }
   if (!origin || !dest) {
     $('routes').innerHTML = `<p class="note">${!origin && !dest ? 'Choose a start and a destination, or tap two buildings on the map.' : !dest ? 'Now choose a destination.' : 'Now choose a starting point.'}</p>`;
-    $('steps').innerHTML = ''; $('dircur').textContent = ''; $('warn').innerHTML = '';
+    $('steps').innerHTML = ''; $('warn').innerHTML = ''; navSteps = []; renderNav();
     setTrip(!origin && !dest ? 'Choose a start and a destination' : !dest ? 'Now choose a destination' : 'Now choose a starting point');
     syncMini();
     routeLayer.clearLayers();
@@ -552,7 +594,7 @@ function update() {
     lastPair = pair;
     fitRoute();
     // on phones, drop the sheet to a peek and shrink the search card so the route is visible
-    if (isMobile()) { setSheet('peek'); syncMini(); }
+    if (isMobile()) { setSheet('peek'); syncMini(); syncTop(); }
   }
   writeHash();
 }
@@ -563,7 +605,7 @@ function fitRoute() {
   for (const e of r) { pts.push(ll(model.nodes[e.a]), ll(model.nodes[e.b])); }
   const mobile = isMobile();
   map.fitBounds(L.latLngBounds(pts), {
-    paddingTopLeft: mobile ? [20, 70] : [440, 40], // mini search bar on top
+    paddingTopLeft: mobile ? [20, topEl.offsetHeight + 24] : [440, 40],
     paddingBottomRight: mobile ? [20, 130] : [40, 40], // sheet peeks after a new route
     maxZoom: 18,
   });
@@ -573,10 +615,10 @@ function renderRoutes() {
   const { fast, comfy, ctx, src } = lastRoutes;
   const box = $('routes'), warn = $('warn');
   box.innerHTML = ''; warn.innerHTML = ''; routeLayer.clearLayers();
-  if (src === routeNode(dest)) { box.innerHTML = '<p class="note">Start and destination are the same place.</p>'; $('steps').innerHTML = ''; setTrip('Start and destination are the same place'); return; }
+  if (src === routeNode(dest)) { box.innerHTML = '<p class="note">Start and destination are the same place.</p>'; $('steps').innerHTML = ''; navSteps = []; renderNav(); setTrip('Start and destination are the same place'); return; }
   if (!fast) {
     box.innerHTML = `<p class="note">No route found. ${esc(diagnose(model, origin, dest, ctx))}</p>`;
-    $('steps').innerHTML = ''; $('dircur').textContent = '';
+    $('steps').innerHTML = ''; navSteps = []; renderNav();
     setTrip('No route found — pull up for details');
     return;
   }
@@ -638,12 +680,12 @@ function renderRoutes() {
   const steps = directions(model, shownPath, src, ctx);
   const ss = summarize(shownPath, ctx);
   setTrip(`<b>${fmtMin(ss.time)}</b> · arrive ${fmtClock((ctx.mins + Math.round(ss.time / 60)) % 1440)} · ${shown === 'fast' ? 'fastest' : 'comfortable'} route`);
-  $('dircur').textContent = `${shown === 'fast' ? 'Fastest' : 'Comfortable'}, ${fmtMin(ss.time)}`;
   $('steps').innerHTML = steps.map((s, i) => `<li data-i="${i}"${s.warn ? ' style="background:#FFF4E5"' : ''}><span class="ic ${s.icon}"></span><span>${esc(s.text)}${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span><span class="m">${s.m} m</span></li>`).join('');
-  $('steps').querySelectorAll('li').forEach((li) => (li.onclick = () => {
-    const s = steps[+(li.dataset.i!)];
-    map.setView(ll(s.at), 18);
-  }));
+  $('steps').querySelectorAll('li').forEach((li) => (li.onclick = () => goStep(+li.dataset.i!)));
+  const sameRoute = navSteps.length === steps.length && navSteps.every((s, i) => s.text === steps[i].text);
+  navSteps = steps;
+  if (!sameRoute) navI = 0;
+  renderNav();
 }
 
 /* ================= boot ================= */
@@ -671,7 +713,6 @@ function start(osm: OsmData, sourceNote?: string) {
   $('saveosm').onclick = saveOsm;
   loadFile($<HTMLInputElement>('jsonfile2'));
   ($('planner') as HTMLElement).hidden = false;
-  if (isMobile()) $('condbox').removeAttribute('open'); // condcur summarises it anyway
   const now = new Date();
   const dateInp = $('date') as HTMLInputElement;
   if (!dateInp.value) {
