@@ -6,7 +6,8 @@
 *{box-sizing:border-box}
 html{-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--ground);color:var(--ink);
-  font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.35}
+  font-family:"Inter Variable",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.35;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 button,select,input,summary,.route,ol.steps li{touch-action:manipulation}
 /* panels never get iOS double-tap page zoom (children inherit via touch-action intersection) */
 #search,#sheet{touch-action:manipulation}
@@ -22,7 +23,8 @@ button,select,input,summary,.route,ol.steps li{touch-action:manipulation}
 .pin i{position:absolute;inset:7px;border-radius:50%;background:var(--ink)}.pin.d i{background:#fff}
 
 /* search card (top) */
-#search{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:58px;z-index:7;background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:8px 10px 8px 12px}
+#search{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:58px;z-index:7;border-radius:16px;box-shadow:var(--shadow);padding:8px 10px 8px 12px;
+  background:rgba(251,250,246,.88);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px)}
 .brandline{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);padding:0 2px 6px}
 .brandline b{color:var(--ink);font-weight:700;font-size:13px}
 .sun{display:flex;align-items:center;gap:6px}
@@ -47,12 +49,13 @@ button,select,input,summary,.route,ol.steps li{touch-action:manipulation}
 .sugg .nm{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sugg .act{color:var(--focus);font-weight:600}
 .quick{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);padding:6px 2px 0}
-.quick button{border:0;background:transparent;color:var(--focus);font:inherit;font-size:12px;font-weight:600;padding:0;cursor:pointer}
+.quick button{border:0;background:transparent;color:var(--focus);font:inherit;font-size:12px;font-weight:600;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
 /* bottom sheet: three snap heights on phones (peek / half / full). The sheet keeps a fixed
    height and slides with transform, so dragging and snapping run on the compositor thread. */
-#sheet{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--panel);border-radius:18px 18px 0 0;box-shadow:0 -2px 10px rgba(0,0,0,.06),0 -12px 40px rgba(0,0,0,.08);
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:6;border-radius:20px 20px 0 0;box-shadow:0 -2px 10px rgba(0,0,0,.06),0 -12px 40px rgba(0,0,0,.08);
+  background:rgba(251,250,246,.92);-webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);
   height:88vh;height:88dvh;display:flex;flex-direction:column;will-change:transform;
   transform:translateY(calc(88dvh - 46dvh));transition:transform .28s cubic-bezier(.22,.9,.28,1)}
 #sheet.drag{transition:none}
@@ -62,7 +65,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .handle::before{content:"";position:absolute;inset:-14px -60px;/* generous touch target */}
 #tripbar{display:none;flex:none;align-items:center;gap:8px;width:100%;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer;
   padding:2px 16px 12px;font-size:13px;color:var(--muted);touch-action:none}
-#tripbar b{color:var(--ink);font-size:16px}
+#tripbar b{color:var(--ink);font-size:17px}
+#tripbar svg{flex:none}
 #tripbar .chev{margin-left:auto;color:var(--muted);flex:none}
 @media (max-width:819px){#tripbar{display:flex}}
 .status{font-size:13px;color:var(--muted);padding:6px 0}.status b{color:var(--ink)}
@@ -75,9 +79,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .btn.quiet{background:#fff;color:var(--ink)}
 
 .routes{margin:6px 0;display:flex;flex-direction:column;gap:8px}
-.route{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:10px 12px;cursor:pointer;font:inherit;color:inherit}
-.route[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-.route .name{font-weight:700}.route .time{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.route{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:16px;padding:12px 14px;cursor:pointer;font:inherit;color:inherit;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.route[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink),0 2px 8px rgba(0,0,0,.06)}
+.route .name{font-weight:700}.route .time{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;text-align:right}
 .route .time small{font-weight:500;color:var(--muted);font-size:12px;display:block}
 .route .sub{grid-column:1/-1;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .strip{grid-column:1/-1;height:10px;border-radius:5px;overflow:hidden;display:flex;background:var(--line)}
@@ -87,8 +91,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .legend .in::before{background:var(--gold)}.legend .sh::before{background:var(--shade)}.legend .su::before{background:var(--sun)}
 
 details{border-top:1px solid var(--line);margin-top:8px;padding-top:6px}
-summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;padding:6px 0;gap:8px}
 summary::-webkit-details-marker{display:none}
+summary::after{content:"";flex:none;width:7px;height:7px;border-right:1.8px solid var(--muted);border-bottom:1.8px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s}
+details[open] summary::after{transform:rotate(-135deg)}
 summary .cur{font-weight:500;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;text-align:right}
 ol.steps{list-style:none;margin:0;padding:0}
 ol.steps li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;padding:8px 4px;border-bottom:1px solid var(--soft);cursor:pointer;font-size:14px}
@@ -100,8 +106,16 @@ ol.steps small{display:block;color:var(--muted);font-size:12px}
 
 .ctl{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;padding:8px 0}
 .ctl label{font-size:13px}.ctl output{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;min-width:70px}
-.ctl input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--gold);margin:4px 0 0}
+.ctl input[type=range]{grid-column:1/-1;width:100%;margin:4px 0 0;-webkit-appearance:none;appearance:none;height:24px;background:transparent}
+.ctl input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--gold) var(--fill,50%),var(--line) var(--fill,50%))}
+.ctl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid var(--gold);box-shadow:0 1px 4px rgba(0,0,0,.25);margin-top:-8px}
+.ctl input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
+.ctl input[type=range]::-moz-range-progress{height:6px;border-radius:3px;background:var(--gold)}
+.ctl input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--gold);box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .ctl .ends{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+/* the comfort slider lives with the route cards, Google-Maps style */
+#comfyctl{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 14px 8px;margin:0 0 8px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+#comfyctl label{font-weight:600}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 0}
 .field{display:flex;flex-direction:column;gap:4px}.field label{font-size:12px;color:var(--muted)}
 select,input[type=date]{width:100%;appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 30px 9px 12px;font:inherit;font-weight:600;color:var(--ink);
@@ -120,7 +134,8 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
 }
 
 #locbtn{position:fixed;right:12px;bottom:calc(116px + env(safe-area-inset-bottom));z-index:5;width:44px;height:44px;border-radius:50%;
-  background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer;color:#1F5FBF}
+  background:rgba(251,250,246,.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border:1px solid var(--line);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer;color:#1F5FBF}
 #locbtn:active{background:var(--soft)}
 @media (min-width:820px){#locbtn{right:16px;bottom:24px}}
 
@@ -157,7 +172,8 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
 }
 @media (pointer:coarse){
   .ctl input[type=range]{height:34px}
-  input[type=range]::-webkit-slider-thumb{width:26px;height:26px}
+  .ctl input[type=range]::-webkit-slider-runnable-track{margin-top:0}
+  .ctl input[type=range]::-webkit-slider-thumb{width:26px;height:26px;margin-top:-10px}
   .swap{width:44px;height:44px}
   .sfield .clear{width:36px;height:36px;font-size:20px}
 }

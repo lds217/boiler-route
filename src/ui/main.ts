@@ -1,3 +1,4 @@
+import '@fontsource-variable/inter';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './style.css';
@@ -353,8 +354,8 @@ try { if (localStorage.getItem('geoOk') && window.isSecureContext) startWatch();
 $('share').onclick = () => {
   writeHash();
   navigator.clipboard?.writeText(location.href).then(() => {
-    $('share').textContent = 'Copied';
-    setTimeout(() => ($('share').textContent = 'Copy link'), 1500);
+    $('sharelbl').textContent = 'Copied';
+    setTimeout(() => ($('sharelbl').textContent = 'Copy link'), 1500);
   });
 };
 const placeKey = (p: Place | null): string => (p ? (p.kind === 'building' ? p.id : `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`) : '');
@@ -501,6 +502,8 @@ function update() {
   const tempF = cond.tempF;
   ($('timeout') as HTMLOutputElement).value = fmtClock(mins);
   ($('comfortout') as HTMLOutputElement).value = w === 0 ? 'Fastest' : `${Math.round(w * 100)}%`;
+  ($('comfort') as HTMLInputElement).style.setProperty('--fill', `${w * 100}%`);
+  ($('time') as HTMLInputElement).style.setProperty('--fill', `${(mins / 1425) * 100}%`);
   const date = new Date(($('date') as HTMLInputElement).value + 'T00:00:00');
   date.setMinutes(mins);
   const sun = sunPosition(date, CAMPUS.lat, CAMPUS.lon);
