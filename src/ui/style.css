@@ -203,6 +203,9 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
 /* building labels clutter and cost at low zoom */
 .lowzoom .leaflet-tooltip.bl{display:none}
 
+/* while a slider drag is still settling, the shown routes are one step stale */
+body.recalc #routes,body.recalc #navmain{opacity:.5;transition:opacity .1s}
+
 /* phones and other coarse pointers */
 @media (max-width:819px){
   /* native-app feel: no long-press selection or callout menu, except where you type */

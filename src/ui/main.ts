@@ -17,7 +17,7 @@ import { loadBundledData, loadOverpass } from '../overpass';
 import { buildContext, dijkstra, summarize } from '../routing';
 import { computeShade } from '../shade';
 import { sunPosition } from '../sun';
-import type { CampusOverrides, Edge, HeightsData, Model, OsmData, Place, RouteContext, Wind } from '../types';
+import type { CampusOverrides, Edge, HeightsData, Model, OsmData, Place, RouteContext, Wind, XY } from '../types';
 import { loadWeather, weatherAt, type WeatherState } from '../weather';
 
 hydrateIcons();
@@ -601,8 +601,12 @@ $('tabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.onclic
 }));
 
 /* ================= conditions ================= */
-for (const id of ['date', 'tempn', 'wind', 'cloud', 'precip', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk'])
-  $(id).addEventListener('input', () => { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(update); });
+// Dragging a slider updates the readout every frame but defers the routing pass,
+// so the thumb never waits on a recompute; releasing it recomputes at once.
+for (const id of ['date', 'tempn', 'wind', 'cloud', 'precip', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk']) {
+  $(id).addEventListener('input', () => scheduleUpdate(false));
+  $(id).addEventListener('change', () => scheduleUpdate(true));
+}
 $('basemap').addEventListener('change', () => {
   const v = ($('basemap') as HTMLSelectElement).value;
   if (v === 'tiles') { tiles.addTo(map); } else { map.removeLayer(tiles); }
@@ -641,49 +645,92 @@ function conditions(): { tempF: number; wind: Wind; cloud: number; precipMm: num
 }
 
 /* ================= update + render ================= */
+/**
+ * Shade is the expensive part (every caster ray-traced against every outdoor
+ * edge) and depends only on the sun, so it is cached by date and minute. The
+ * comfort slider changes neither, and must never pay for it.
+ */
+let shadeCache: { key: string; sun: ReturnType<typeof sunPosition>; sunFrac: Float32Array; shadows: XY[][] } | null = null;
+let shadowKey = '', openKey = '';
+function shadeAt(date: Date, key: string) {
+  if (shadeCache?.key === key) return shadeCache;
+  const sun = sunPosition(date, CAMPUS.lat, CAMPUS.lon);
+  const { sunFrac, shadows } = computeShade(model!, sun);
+  shadeCache = { key, sun, sunFrac, shadows };
+  return shadeCache;
+}
+
+/** Cheap enough to run on every frame of a drag: just the readouts. */
+function updateLabels() {
+  const mins = +($('time') as HTMLInputElement).value;
+  const w = +($('comfort') as HTMLInputElement).value / 100;
+  ($('timeout') as HTMLOutputElement).value = fmtClock(mins);
+  ($('comfortout') as HTMLOutputElement).value = w === 0 ? 'Fastest' : `${Math.round(w * 100)}%`;
+  ($('comfort') as HTMLInputElement).style.setProperty('--fill', `${w * 100}%`);
+  ($('time') as HTMLInputElement).style.setProperty('--fill', `${(mins / 1425) * 100}%`);
+}
+
+/** Recompute after the drag settles, so a slider never blocks on routing. */
+let heavyT: number | undefined;
+function scheduleUpdate(now = false) {
+  updateLabels();
+  clearTimeout(heavyT);
+  if (now) { update(); return; }
+  document.body.classList.add('recalc');
+  heavyT = window.setTimeout(update, isMobile() ? 170 : 60);
+}
+
 function update() {
   raf = null;
+  clearTimeout(heavyT);
+  document.body.classList.remove('recalc');
   if (!model) return;
   const mins = +($('time') as HTMLInputElement).value;
   const w = +($('comfort') as HTMLInputElement).value / 100;
   const cond = conditions();
   const tempF = cond.tempF;
-  ($('timeout') as HTMLOutputElement).value = fmtClock(mins);
-  ($('comfortout') as HTMLOutputElement).value = w === 0 ? 'Fastest' : `${Math.round(w * 100)}%`;
-  ($('comfort') as HTMLInputElement).style.setProperty('--fill', `${w * 100}%`);
-  ($('time') as HTMLInputElement).style.setProperty('--fill', `${(mins / 1425) * 100}%`);
-  const date = new Date(($('date') as HTMLInputElement).value + 'T00:00:00');
+  updateLabels();
+  const dateStr = ($('date') as HTMLInputElement).value;
+  const date = new Date(dateStr + 'T00:00:00');
   date.setMinutes(mins);
-  const sun = sunPosition(date, CAMPUS.lat, CAMPUS.lon);
-  const { sunFrac, shadows } = computeShade(model, sun);
+  const shadeKey = `${dateStr}|${mins}`;
+  const { sun, sunFrac, shadows } = shadeAt(date, shadeKey);
   const sunAddF = Math.round(SUN_MAX_C * Math.max(0, Math.sin(sun.alt)) * (1 - (CLOUD_CUT * cond.cloud) / 100) * 9 / 5);
   $('condcur').textContent = `${fmtClock(mins)}, ${Math.round(tempF)} °F${sunAddF ? `, sun +${sunAddF} °F` : ''}`;
   $('suntext').lastElementChild!.textContent = sun.alt <= 0 ? 'Night' : `Sun ${Math.round((sun.alt * 180) / Math.PI)}° ${compassShort(sun.bearing)}, +${sunAddF} °F`;
-  shadowLayer.clearLayers();
+  // Shadows only move when the sun does, so skip the rebuild when the time did not change.
   // One multipolygon = one canvas path: much cheaper than hundreds of layers, and
   // overlapping shadows read as one flat tone instead of double-darkening.
   // That single path needs the nonzero fill rule (Leaflet defaults to evenodd,
   // which punches overlaps back out) and rings wound the same way, or opposite
   // windings cancel under nonzero too.
-  if (shadows.length) {
-    const rings = shadows.map((h) => {
-      const pts = h.map(ll);
-      let twiceArea = 0;
-      for (let i = 0, n = pts.length; i < n; i++) {
-        const p = pts[i], q = pts[(i + 1) % n];
-        twiceArea += p[0] * q[1] - q[0] * p[1];
-      }
-      return [twiceArea < 0 ? pts.reverse() : pts];
-    });
-    L.polygon(rings, { pane: 'shadow', stroke: false, fillColor: '#191817', fillOpacity: 0.16, fillRule: 'nonzero', interactive: false }).addTo(shadowLayer);
+  if (shadowKey !== shadeKey) {
+    shadowKey = shadeKey;
+    shadowLayer.clearLayers();
+    if (shadows.length) {
+      const rings = shadows.map((h) => {
+        const pts = h.map(ll);
+        let twiceArea = 0;
+        for (let i = 0, n = pts.length; i < n; i++) {
+          const p = pts[i], q = pts[(i + 1) % n];
+          twiceArea += p[0] * q[1] - q[0] * p[1];
+        }
+        return [twiceArea < 0 ? pts.reverse() : pts];
+      });
+      L.polygon(rings, { pane: 'shadow', stroke: false, fillColor: '#191817', fillOpacity: 0.16, fillRule: 'nonzero', interactive: false }).addTo(shadowLayer);
+    }
   }
 
   const open = computeOpen(model.buildings, date.getDay(), mins / 60);
-  for (const b of model.buildings) {
-    if (!b.campus) continue; // scenery keeps its muted style
-    bldShapes[b.id]?.setStyle({ fillColor: open[b.id] ? '#E0D6BE' : '#E9E5D9', dashArray: open[b.id] ? undefined : '3 3' });
-    const tipEl = bldShapes[b.id]?.getTooltip()?.getElement();
-    tipEl?.classList.toggle('closed', !open[b.id]);
+  // Open/closed styling also only changes with the clock.
+  if (openKey !== shadeKey) {
+    openKey = shadeKey;
+    for (const b of model.buildings) {
+      if (!b.campus) continue; // scenery keeps its muted style
+      bldShapes[b.id]?.setStyle({ fillColor: open[b.id] ? '#E0D6BE' : '#E9E5D9', dashArray: open[b.id] ? undefined : '3 3' });
+      const tipEl = bldShapes[b.id]?.getTooltip()?.getElement();
+      tipEl?.classList.toggle('closed', !open[b.id]);
+    }
   }
   if (!origin || !dest) {
     $('routes').innerHTML = `<p class="note">${!origin && !dest ? 'Choose a start and a destination, or tap two buildings on the map.' : !dest ? 'Now choose a destination.' : 'Now choose a starting point.'}</p>`;
@@ -816,6 +863,8 @@ function start(osm: OsmData, sourceNote?: string) {
   basemap = extractBasemap(osm, proj);
   const named = model.buildings.filter((b) => b.named && b.campus);
   if (named.length < 2) { showError(new Error('fewer than two named campus buildings in this block')); return; }
+  // a new model invalidates everything keyed to the old one
+  shadeCache = null; shadowKey = ''; openKey = '';
   drawBasemap(); drawModel(); routeLayer.clearLayers();
   const links = model.edges.filter((e) => e.kind === 'link').length;
   const lidarN = heights ? model.buildings.filter((b) => b.heightSource === 'lidar').length : 0;
