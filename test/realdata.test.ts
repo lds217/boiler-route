@@ -71,6 +71,15 @@ describe.skipIf(!osm)('real Purdue extract', () => {
     expect(lidar.length).toBeGreaterThan(40);
     for (const b of lidar) { expect(b.height).toBeGreaterThan(2); expect(b.height).toBeLessThan(120); }
     expect(m.trees.length).toBeGreaterThan(100); // canopy circles replaced OSM tree points
+    // The tiles cover only part of the bbox; south of them OSM trees must survive,
+    // otherwise uncovered ground routes as treeless full sun.
+    const cov = heights!.coverage;
+    if (cov && cov.south > BBOX[0]) {
+      const south = m.trees.filter((t) => proj.ll(t.c)[0] < cov.south);
+      expect(south.length, 'OSM trees kept south of lidar coverage').toBeGreaterThan(10);
+      const canopyS = heights!.canopy.filter((c) => c.lat < cov.south);
+      expect(canopyS.length, 'no canopy circles below coverage').toBe(0);
+    }
     const t0 = performance.now();
     const { sunFrac } = computeShade(m, { alt: Math.PI / 3, bearing: Math.PI });
     const ms = performance.now() - t0;

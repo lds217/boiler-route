@@ -148,11 +148,26 @@ for br in range(0, canopy_mask.shape[0], B):
         })
 print(f"canopy: {len(canopy)} circles (block {B * cell_ft:.0f} ft, threshold {CANOPY_MIN_M} m)")
 
+# ---- where the tiles actually hold data, so the app can keep OSM trees elsewhere ----
+rows, cols = np.nonzero(np.isfinite(band))
+rx0, rx1 = transform.c + cols.min() * cell_ft, transform.c + (cols.max() + 1) * cell_ft
+ry0, ry1 = transform.f - (rows.max() + 1) * cell_ft, transform.f - rows.min() * cell_ft
+corners = [to_wgs.transform(x, y) for x in (rx0, rx1) for y in (ry0, ry1)]
+lons = [c[0] for c in corners]
+lats = [c[1] for c in corners]
+# inner box: never claim coverage the reprojected corners don't all share
+coverage = {
+    "south": round(max(lats[0], lats[2]), 6), "north": round(min(lats[1], lats[3]), 6),
+    "west": round(max(lons[0], lons[1]), 6), "east": round(min(lons[2], lons[3]), 6),
+}
+print(f"coverage: lat {coverage['south']}..{coverage['north']}, lon {coverage['west']}..{coverage['east']}")
+
 out = {
     "_generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     "_source": "Indiana 2017-2019 3DEP lidar NDHM, " + ", ".join(Path(t).name for t in tiles),
     "buildings": heights,
     "canopy": canopy,
+    "coverage": coverage,
 }
 dest = ROOT / "public/campus-heights.json"
 dest.write_text(json.dumps(out))

@@ -68,9 +68,13 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
   const overrides = opts.overrides ?? {};
   const campusPolys = extractCampusPolys(idx, proj);
   const buildings = extractBuildings(idx, proj, opts.weekday, overrides.buildings ?? {}, opts.heights?.buildings ?? {}, campusPolys);
-  // Lidar canopy strictly supersedes OSM tree points as shade casters.
-  const trees = opts.heights?.canopy?.length
-    ? opts.heights.canopy.map((c, i): Tree => {
+  // Lidar canopy supersedes OSM tree points, but only where the tiles actually
+  // reach: outside that coverage OSM trees stay, or the uncovered ground would
+  // route as treeless full sun.
+  const canopy = opts.heights?.canopy ?? [];
+  const cov = opts.heights?.coverage;
+  const trees: Tree[] = canopy.length
+    ? canopy.map((c, i): Tree => {
         const p = proj.xy(c.lat, c.lon);
         const ring: XY[] = [];
         for (let k = 0; k < 10; k++) {
@@ -83,6 +87,12 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
         };
       })
     : extractTrees(idx, proj);
+  if (canopy.length && cov) {
+    for (const t of extractTrees(idx, proj)) {
+      const [lat, lon] = proj.ll(t.c);
+      if (lat < cov.south || lat > cov.north || lon < cov.west || lon > cov.east) trees.push(t);
+    }
+  }
   const bInside = (p: XY): Building | undefined =>
     buildings.find((b) => p.x >= b.bbox.x0 && p.x <= b.bbox.x1 && p.y >= b.bbox.y0 && p.y <= b.bbox.y1 && pointInRing(p, b.ring));
 
