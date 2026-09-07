@@ -205,6 +205,9 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
 
 /* phones and other coarse pointers */
 @media (max-width:819px){
+  /* native-app feel: no long-press selection or callout menu, except where you type */
+  body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
   /* 16px inputs stop iOS Safari from zooming the page on focus */
   .sfield input,select,input[type=date]{font-size:16px}
   .sfield input{padding:9px 0}
