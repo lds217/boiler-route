@@ -22,7 +22,8 @@ button,select,input,summary,.route,ol.steps li{touch-action:manipulation}
 .leaflet-container{background:var(--ground);font:inherit}
 .leaflet-tooltip.bl{background:transparent;border:0;box-shadow:none;color:var(--ink);font-weight:600;font-size:11px;letter-spacing:.02em;pointer-events:none;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 4px #fff}
 .leaflet-tooltip.bl.closed{color:var(--muted);font-weight:500}
-.leaflet-tooltip.st{background:transparent;border:0;box-shadow:none;color:var(--muted);font-weight:500;font-size:10px;letter-spacing:.06em;pointer-events:none;text-shadow:0 0 3px #fff,0 0 3px #fff}
+.leaflet-tooltip.st{background:transparent;border:0;box-shadow:none;color:#5C5A54;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;pointer-events:none;
+  text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 5px #fff,0 0 5px #fff}
 .leaflet-control-attribution{font-size:10px;background:rgba(252,251,247,.85)}
 .leaflet-top.leaflet-right{top:max(10px,env(safe-area-inset-top))}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}

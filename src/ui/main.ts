@@ -55,10 +55,17 @@ const ll = (p: { x: number; y: number }): [number, number] => proj.ll(p);
 // Extra canvas padding renders past the viewport so panning doesn't redraw every frame.
 const map = L.map('map', { zoomControl: false, preferCanvas: true, renderer: L.canvas({ padding: 0.5 }) }).setView([CAMPUS.lat, CAMPUS.lon], 17);
 L.control.zoom({ position: 'topright' }).addTo(map);
-const syncLabels = () => document.body.classList.toggle('lowzoom', map.getZoom() < 16);
-map.on('zoomend', syncLabels); syncLabels();
+const syncLabels = () => {
+  const z = map.getZoom();
+  document.body.classList.toggle('lowzoom', z < 16);
+  // street names only once there is room for them
+  if (z >= 17) labelLayer.addTo(map); else map.removeLayer(labelLayer);
+};
+map.on('zoomend', () => { syncLabels(); applyLineWeights(); });
 map.createPane('ground').style.zIndex = '330';
+map.createPane('casing').style.zIndex = '336';
 map.createPane('base').style.zIndex = '340';
+map.createPane('label').style.zIndex = '344';
 map.createPane('shadow').style.zIndex = '350';
 map.createPane('net').style.zIndex = '360';
 map.createPane('routes').style.zIndex = '450';
@@ -86,20 +93,61 @@ const bldShapes: Record<string, L.Polygon> = {};
 const GROUND_FILL: Record<string, string> = {
   green: '#DCDCC6', wood: '#CBCFB2', water: '#C4D6D3', parking: '#E3DFD2', pitch: '#D5D9C0', sand: '#EBD99F', dirt: '#DED7C6',
 };
+/* Road fills sit on a darker casing, and both scale with zoom, the way a raster
+   basemap does. Widths are metres-ish: z<=15, 16, 17, 18, z>=19. */
+type LineClass = 'major' | 'minor' | 'service' | 'walk';
+const LINE_FILL: Record<LineClass, string> = { major: '#FFFFFF', minor: '#FFFFFF', service: '#F8F5ED', walk: '#F0EBE0' };
+const LINE_CASE: Record<LineClass, string> = { major: '#CFC3A4', minor: '#D8CFB6', service: '#E0D8C4', walk: '#D5CDB8' };
+const LINE_W: Record<LineClass, number[]> = {
+  major: [3, 5.5, 9, 14, 20],
+  minor: [2.2, 4, 6.5, 10, 15],
+  service: [1.2, 2, 3.2, 5, 7],
+  walk: [0.8, 1.3, 2, 2.8, 3.6],
+};
+const zStep = (z: number) => (z <= 15 ? 0 : z >= 19 ? 4 : z - 15);
+let baseLines: { fill: L.Polyline; casing: L.Polyline | null; klass: LineClass }[] = [];
+const labelLayer = L.layerGroup();
+
+function applyLineWeights() {
+  const i = zStep(map.getZoom());
+  for (const b of baseLines) {
+    const w = LINE_W[b.klass][i];
+    b.fill.setStyle({ weight: w, dashArray: b.klass === 'walk' && w >= 2 ? `${w * 1.6} ${w * 1.4}` : undefined });
+    b.casing?.setStyle({ weight: w + (i >= 3 ? 3 : 2) });
+  }
+}
+
 function drawBasemap() {
-  groundLayer.clearLayers();
+  groundLayer.clearLayers(); labelLayer.clearLayers(); baseLines = [];
   if (!basemap || $('basemap') && ($('basemap') as HTMLSelectElement).value !== 'builtin') return;
   for (const g of basemap.ground)
     L.polygon(g.ring.map(ll), { pane: 'ground', stroke: false, fillColor: GROUND_FILL[g.kind], fillOpacity: 0.8, interactive: false }).addTo(groundLayer);
   for (const s of basemap.lines) {
-    const style = s.klass === 'major' ? { color: '#FFFFFF', weight: 9, opacity: 0.95 }
-      : s.klass === 'minor' ? { color: '#FFFFFF', weight: 7, opacity: 0.9 }
-      : s.klass === 'service' ? { color: '#F6F3EA', weight: 4, opacity: 0.9 }
-      : { color: '#D8D0BE', weight: 2, opacity: 0.9, dashArray: undefined };
-    const line = L.polyline(s.pts.map(ll), { pane: 'base', interactive: false, ...style }).addTo(groundLayer);
-    if (s.name && s.klass !== 'walk')
-      line.bindTooltip(s.name, { permanent: false, direction: 'center', className: 'st' });
+    const pts = s.pts.map(ll);
+    const klass = s.klass as LineClass;
+    // footways read better as a single dashed line, with no casing under them
+    const casing = klass === 'walk' ? null
+      : L.polyline(pts, { pane: 'casing', interactive: false, color: LINE_CASE[klass], weight: 1, lineCap: 'round', lineJoin: 'round' }).addTo(groundLayer);
+    const fill = L.polyline(pts, { pane: 'base', interactive: false, color: LINE_FILL[klass], weight: 1, lineCap: klass === 'walk' ? 'butt' : 'round', lineJoin: 'round' }).addTo(groundLayer);
+    baseLines.push({ fill, casing, klass });
   }
+  // one name label per street, on its longest way, like a printed map
+  const longest = new Map<string, { len: number; pts: [number, number][] }>();
+  for (const s of basemap.lines) {
+    if (!s.name || s.klass === 'walk') continue;
+    let len = 0;
+    for (let i = 1; i < s.pts.length; i++) len += Math.hypot(s.pts[i].x - s.pts[i - 1].x, s.pts[i].y - s.pts[i - 1].y);
+    const cur = longest.get(s.name);
+    if (!cur || len > cur.len) longest.set(s.name, { len, pts: s.pts.map(ll) });
+  }
+  for (const [name, v] of longest) {
+    if (v.len < 40) continue;
+    L.polyline(v.pts, { pane: 'label', interactive: false, opacity: 0 })
+      .bindTooltip(name, { permanent: true, direction: 'center', className: 'st', pane: 'label' })
+      .addTo(labelLayer);
+  }
+  applyLineWeights();
+  syncLabels();
 }
 
 // The walkable-network overlay is thousands of polylines; build it only when first shown.
