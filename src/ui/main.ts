@@ -117,15 +117,38 @@ function drawModel() {
       ? { color: '#A79470', weight: 1, fillColor: '#E0D6BE', fillOpacity: 0.85, bubblingMouseEvents: false }
       : { color: '#B4AFA3', weight: 0.8, fillColor: '#E4E1D9', fillOpacity: 0.6, interactive: false }).addTo(bldLayer);
     if (b.campus && b.named) poly.bindTooltip(b.abbr, { permanent: true, direction: 'center', className: 'bl' });
-    if (b.campus) poly.on('click', () => { if (b.named) setPlace({ kind: 'building', id: b.id, label: `${b.abbr}  ${b.name}` }); });
+    if (b.campus) poly.on('click', () => { if (b.named) askPlace({ kind: 'building', id: b.id, label: `${b.abbr}  ${b.name}` }, ll(b.c)); });
     bldShapes[b.id] = poly;
   }
   for (const t of model.trees)
     L.circle(ll(t.c), { radius: t.r, color: '#93A07E', weight: 1, fillColor: '#C6CEB4', fillOpacity: 0.7, interactive: false }).addTo(bldLayer);
 }
 
-map.on('click', (e) => { const p = pointAt(e.latlng); if (p) setPlace(p); });
-function pointAt(latlng: { lat: number; lng: number }): Place | null {
+map.on('click', (e) => {
+  const p = pointAt(e.latlng);
+  if (p) askPlace(p, [p.lat, p.lon]);
+  else if (model) toast('No mapped path there. Tap a sidewalk, a path, or a campus building.');
+});
+
+/** A tap is ambiguous, so never guess: ask at the point which end it is. */
+function askPlace(pl: Place, at: [number, number]) {
+  if (pendingField) { setPlace(pl, pendingField); return; } // the user already picked a field
+  const el = document.createElement('div');
+  el.className = 'pk';
+  const primary = origin && !dest ? 'to' : 'from';
+  const btn = (f: 'from' | 'to', ic: string, label: string) =>
+    `<button data-f="${f}"${f === primary ? ' class="p"' : ''}>${icon(ic, 15)}${label}</button>`;
+  el.innerHTML = `<b>${esc(pl.label)}</b><div class="pkb">${
+    btn('from', 'start', origin ? 'Change start' : 'Start here')}${
+    btn('to', 'arrive', dest ? 'Change end' : 'End here')}</div>`;
+  el.querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.onclick = () => {
+    map.closePopup();
+    setPlace(pl, b.dataset.f as 'from' | 'to');
+  }));
+  L.popup({ className: 'pkpop', closeButton: false, offset: [0, -4], autoPanPadding: [24, 100] })
+    .setLatLng(at).setContent(el).openOn(map);
+}
+function pointAt(latlng: { lat: number; lng: number }): Extract<Place, { kind: 'point' }> | null {
   if (!model) return null;
   const p = proj.xy(latlng.lat, latlng.lng);
   const near = nearestPathNode(model, p);
@@ -222,7 +245,13 @@ function renderSugg(field: 'from' | 'to') {
     ev.preventDefault();
     const id = (btn as HTMLElement).dataset.id, act = (btn as HTMLElement).dataset.act;
     if (id && model) { const b = model.byId[id]; setPlace({ kind: 'building', id: b.id, label: `${b.abbr}  ${b.name}` }, field); }
-    else if (act === 'map') { pendingField = field; ($(field) as HTMLInputElement).value = ''; ($(field) as HTMLInputElement).placeholder = 'Now tap the map'; closeSugg(); }
+    else if (act === 'map') {
+      pendingField = field;
+      ($(field) as HTMLInputElement).value = '';
+      ($(field) as HTMLInputElement).placeholder = 'Now tap the map';
+      closeSugg();
+      toast(`Tap the map to set the ${field === 'from' ? 'starting point' : 'destination'}.`);
+    }
     else if (act === 'loc') { locate(); closeSugg(); }
   }));
 }

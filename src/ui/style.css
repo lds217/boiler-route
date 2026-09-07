@@ -85,6 +85,17 @@ button,select,input,summary,.route,ol.steps li{touch-action:manipulation}
 .quick button{border:0;background:transparent;color:var(--focus);font:inherit;font-size:12px;font-weight:600;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
+/* "start or end?" popup at the tapped point */
+.pkpop .leaflet-popup-content-wrapper{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:0}
+.pkpop .leaflet-popup-content{margin:10px 12px;font:inherit;width:auto!important;min-width:186px}
+.pkpop .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
+.pk b{display:block;font-size:13px;font-weight:700;margin-bottom:8px}
+.pkb{display:flex;gap:6px}
+.pkb button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--line);background:#fff;color:var(--ink);
+  border-radius:10px;padding:9px 8px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pkb button.p{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pkb button svg{width:15px;height:15px;flex:none}
+
 /* bottom sheet: three snap heights on phones (peek / half / full). The sheet keeps a fixed
    height and slides with transform, so dragging and snapping run on the compositor thread. */
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:6;border-radius:20px 20px 0 0;box-shadow:0 -2px 10px rgba(0,0,0,.06),0 -12px 40px rgba(0,0,0,.08);
