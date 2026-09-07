@@ -571,9 +571,22 @@ function update() {
   $('suntext').lastElementChild!.textContent = sun.alt <= 0 ? 'Night' : `Sun ${Math.round((sun.alt * 180) / Math.PI)}° ${compassShort(sun.bearing)}, +${sunAddF} °F`;
   shadowLayer.clearLayers();
   // One multipolygon = one canvas path: much cheaper than hundreds of layers, and
-  // overlapping shadows no longer double-darken.
-  if (shadows.length)
-    L.polygon(shadows.map((h) => [h.map(ll)]), { pane: 'shadow', stroke: false, fillColor: '#191817', fillOpacity: 0.16, interactive: false }).addTo(shadowLayer);
+  // overlapping shadows read as one flat tone instead of double-darkening.
+  // That single path needs the nonzero fill rule (Leaflet defaults to evenodd,
+  // which punches overlaps back out) and rings wound the same way, or opposite
+  // windings cancel under nonzero too.
+  if (shadows.length) {
+    const rings = shadows.map((h) => {
+      const pts = h.map(ll);
+      let twiceArea = 0;
+      for (let i = 0, n = pts.length; i < n; i++) {
+        const p = pts[i], q = pts[(i + 1) % n];
+        twiceArea += p[0] * q[1] - q[0] * p[1];
+      }
+      return [twiceArea < 0 ? pts.reverse() : pts];
+    });
+    L.polygon(rings, { pane: 'shadow', stroke: false, fillColor: '#191817', fillOpacity: 0.16, fillRule: 'nonzero', interactive: false }).addTo(shadowLayer);
+  }
 
   const open = computeOpen(model.buildings, date.getDay(), mins / 60);
   for (const b of model.buildings) {
