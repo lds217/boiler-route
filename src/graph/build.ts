@@ -1,6 +1,6 @@
 import {
-  ASSUMED_DOOR_PENALTY_FACTOR, CORRIDOR_FACTOR, DOOR_CONNECT, DOOR_REACH, DOOR_SECTORS, DOOR_SNAP,
-  GAP_CLOSE, NEVER_WALK, SEC, STREETS, WALKWAYS,
+  ASSUMED_DOOR_PENALTY_FACTOR, CORRIDOR_FACTOR, CROSSING_STREET_REACH, DOOR_CONNECT, DOOR_REACH,
+  DOOR_SECTORS, DOOR_SNAP, GAP_CLOSE, NEVER_WALK, SEC, STREETS, WALKWAYS,
 } from '../constants';
 import {
   bearingDeg, closestOnRing, compass8, dist, distToRing, pointInRing, segIntersects, type Projection,
@@ -61,6 +61,39 @@ export class StreetIndex {
       }
     return null;
   }
+
+  /**
+   * Nearest street to a point, for crossing edges drawn just short of the
+   * carriageway: without this they fall back to a generic class and are priced
+   * as if they crossed a quiet residential street.
+   */
+  nearest(p: XY, maxDist: number): StreetSeg | null {
+    let best: StreetSeg | null = null, bd = maxDist * maxDist;
+    const r = Math.ceil(maxDist / this.cell);
+    const cx = Math.floor(p.x / this.cell), cy = Math.floor(p.y / this.cell);
+    const seen = new Set<number>();
+    for (let x = cx - r; x <= cx + r; x++)
+      for (let y = cy - r; y <= cy + r; y++) {
+        const lst = this.grid.get(`${x},${y}`);
+        if (!lst) continue;
+        for (const i of lst) {
+          if (seen.has(i)) continue;
+          seen.add(i);
+          const s = this.streets[i];
+          const d = distToSegSq(p, s.a, s.b);
+          if (d < bd) { bd = d; best = s; }
+        }
+      }
+    return best;
+  }
+}
+
+function distToSegSq(p: XY, a: XY, b: XY): number {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2)) : 0;
+  const qx = a.x + t * dx, qy = a.y + t * dy;
+  return (p.x - qx) ** 2 + (p.y - qy) ** 2;
 }
 
 export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): Model {
@@ -119,7 +152,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
         streets.push({
           a: proj.xy(pts[i].lat, pts[i].lon), b: proj.xy(pts[i + 1].lat, pts[i + 1].lon),
           na: pts[i].id, nb: pts[i + 1].id,
-          name: t.name || hw.replace('_', ' '), osmWay: +idStr,
+          name: t.name || hw.replace('_', ' '), klass: hw, osmWay: +idStr,
         });
       // Streets are only walked along when they probably have an unmapped sidewalk.
       const sw = t.sidewalk || t['sidewalk:both'] || '';
@@ -134,6 +167,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
     else if (t.bridge && t.bridge !== 'no' && (t.covered === 'yes' || t.indoor)) { kind = 'link'; linkKind = 'skywalk'; }
     const covered = t.covered === 'yes' || t.tunnel === 'building_passage';
     const road = STREETS.has(hw);
+    const lit = t.lit === 'yes' || t.lit === '24/7' ? true : t.lit === 'no' ? false : null;
     const isCrossingWay = t.footway === 'crossing' || t.path === 'crossing' || t.cycleway === 'crossing' || !!t.crossing;
     const name = t.name || null;
 
@@ -162,7 +196,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
       }
       addEdge('n' + a.id, 'n' + b.id, k, {
         bld, linkKind: k === 'link' ? linkKind || 'corridor' : null,
-        covered: cov, road, name, osmWay: +idStr, steps: hw === 'steps', crossing,
+        covered: cov, road, name, lit, osmWay: +idStr, steps: hw === 'steps', crossing,
       });
     }
   }
@@ -176,7 +210,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
     if (e.kind !== 'outdoor' || e.crossing || e.road) continue;
     const ids = new Set([+e.a.slice(1), +e.b.slice(1)]);
     const s = sIndex.crossed(nodes[e.a], nodes[e.b], ids);
-    if (s) { e.crossing = { type: 'jaywalk', street: s.name }; jaywalks++; }
+    if (s) { e.crossing = { type: 'jaywalk', street: s.name, klass: s.klass }; jaywalks++; }
   }
   const streetAtNode = (id: string): StreetSeg | undefined => {
     const n = +String(id).slice(1);
@@ -184,8 +218,10 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
   };
   for (const e of edges)
     if (e.crossing && !e.crossing.street) {
-      const s = sIndex.crossed(nodes[e.a], nodes[e.b], null) || streetAtNode(e.a) || streetAtNode(e.b);
-      if (s) e.crossing.street = s.name;
+      const mid = { x: (nodes[e.a].x + nodes[e.b].x) / 2, y: (nodes[e.a].y + nodes[e.b].y) / 2 };
+      const s = sIndex.crossed(nodes[e.a], nodes[e.b], null) || streetAtNode(e.a) || streetAtNode(e.b)
+        || sIndex.nearest(mid, CROSSING_STREET_REACH);
+      if (s) { e.crossing.street = s.name; e.crossing.klass = s.klass; }
     }
 
   // ---- close small gaps, never across a street ----

@@ -544,7 +544,7 @@ $('tabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.onclic
 }));
 
 /* ================= conditions ================= */
-for (const id of ['date', 'tempn', 'wind', 'cloud', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk'])
+for (const id of ['date', 'tempn', 'wind', 'cloud', 'precip', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk'])
   $(id).addEventListener('input', () => { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(update); });
 $('basemap').addEventListener('change', () => {
   const v = ($('basemap') as HTMLSelectElement).value;
@@ -559,24 +559,28 @@ function nearestOption(sel: HTMLSelectElement, v: number) {
   for (const o of sel.options) { const d = Math.abs(+o.value - v); if (d < bd) { bd = d; best = o.value; } }
   if (best !== null) sel.value = best;
 }
-function conditions(): { tempF: number; wind: Wind; cloud: number } {
+function conditions(): { tempF: number; wind: Wind; cloud: number; precipMm: number } {
   const manual = ($('manual') as HTMLInputElement).checked;
   const mins = +($('time') as HTMLInputElement).value;
   const dateStr = ($('date') as HTMLInputElement).value;
-  for (const id of ['tempn', 'wind', 'cloud']) ($(id) as HTMLSelectElement).disabled = !manual;
+  for (const id of ['tempn', 'wind', 'cloud', 'precip']) ($(id) as HTMLSelectElement).disabled = !manual;
   const w = weatherAt(wx, dateStr, mins);
   if (!manual && w) {
     nearestOption($('tempn') as HTMLSelectElement, w.tempF);
     ($('wind') as HTMLSelectElement).value = windClass(w.mph);
     nearestOption($('cloud') as HTMLSelectElement, w.cloud);
-    $('wx').innerHTML = `Live for ${fmtClock(mins)}: <b>${Math.round(w.tempF)} °F</b>, wind ${Math.round(w.mph)} mph, ${Math.round(w.cloud)}% cloud <small>(Open-Meteo, fetched ${wx.fetchedAt!.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})</small>`;
-    return { tempF: w.tempF, wind: windClass(w.mph), cloud: w.cloud };
+    nearestOption($('precip') as HTMLSelectElement, w.precipMm);
+    $('wx').innerHTML = `Live for ${fmtClock(mins)}: <b>${Math.round(w.tempF)} °F</b>, wind ${Math.round(w.mph)} mph, ${Math.round(w.cloud)}% cloud${w.precipMm > 0 ? `, ${w.precipMm.toFixed(1)} mm/h rain` : ''} <small>(Open-Meteo, fetched ${wx.fetchedAt!.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})</small>`;
+    return { tempF: w.tempF, wind: windClass(w.mph), cloud: w.cloud, precipMm: w.precipMm };
   }
   if (!manual) $('wx').innerHTML = wx.ok
     ? 'No forecast for that date and time (Open-Meteo covers about 3 days). Using the manual values below.'
     : wx.err ? `Live weather unavailable (${esc(wx.err)}). Using the manual values below.` : 'Fetching live weather…';
   else $('wx').innerHTML = 'Manual conditions.';
-  return { tempF: +($('tempn') as HTMLSelectElement).value, wind: ($('wind') as HTMLSelectElement).value as Wind, cloud: +($('cloud') as HTMLSelectElement).value };
+  return {
+    tempF: +($('tempn') as HTMLSelectElement).value, wind: ($('wind') as HTMLSelectElement).value as Wind,
+    cloud: +($('cloud') as HTMLSelectElement).value, precipMm: +($('precip') as HTMLSelectElement).value,
+  };
 }
 
 /* ================= update + render ================= */
@@ -636,7 +640,7 @@ function update() {
   if (origin.kind === 'building') open[origin.id] = true;
   if (dest.kind === 'building') open[dest.id] = true;
   const ctx = buildContext(model, {
-    sunFrac, sun, tempC: fToC(tempF), wind: cond.wind, cloudPct: cond.cloud, w: 0,
+    sunFrac, sun, tempC: fToC(tempF), wind: cond.wind, cloudPct: cond.cloud, precipMm: cond.precipMm, w: 0,
     open, stepFree: ($('stepfree') as HTMLInputElement).checked, noJaywalk: ($('nojaywalk') as HTMLInputElement).checked, mins,
   });
   // Any change of conditions resets the highlighted route to the comfortable one.
@@ -721,6 +725,8 @@ function renderRoutes() {
       if (s.unverified) warn.innerHTML += '<div class="warn">This route uses an indoor link that has not been verified on foot.</div>';
       if (s.assumedDoors) warn.innerHTML += `<div class="warn">${s.assumedDoors} door${s.assumedDoors > 1 ? 's' : ''} on this route ${s.assumedDoors > 1 ? 'are' : 'is'} not mapped in OSM and ${s.assumedDoors > 1 ? 'were' : 'was'} assumed from where the sidewalk meets the wall. If one is wrong, add the real entrance to OpenStreetMap and reload.</div>`;
       if (s.jaywalks) warn.innerHTML += '<div class="warn">This route crosses a street where OSM has no crossing mapped. Tick "Only cross at crossings" to avoid it.</div>';
+      if (s.unlitLen > 60) warn.innerHTML += `<div class="warn">${Math.round(s.unlitLen)} m of this route has no street lighting mapped in OSM. Routing already prefers lit paths after dark.</div>`;
+      if (s.majorCrossings) warn.innerHTML += `<div class="warn">Crosses ${s.majorCrossings} main road${s.majorCrossings > 1 ? 's' : ''}. Use the signals and watch for turning traffic.</div>`;
     }
   }
   const draw = (path: Edge[], hi: boolean) => {

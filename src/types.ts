@@ -61,7 +61,7 @@ export interface GraphNode extends XY {
 
 export type EdgeKind = 'outdoor' | 'indoor' | 'link';
 export type CrossingType = 'signal' | 'marked' | 'plain' | 'jaywalk';
-export interface Crossing { type: CrossingType; street?: string }
+export interface Crossing { type: CrossingType; street?: string; klass?: string }
 
 export interface DoorSpec {
   enter: boolean;
@@ -91,6 +91,8 @@ export interface Edge {
   steps?: boolean;
   covered?: boolean;
   connector?: boolean;
+  /** OSM lit tag: true=yes, false=no, null/undefined=not mapped. */
+  lit?: boolean | null;
   crossing?: Crossing | null;
   osmWay?: number;
   // indoor
@@ -114,6 +116,7 @@ export interface StreetSeg {
   a: XY; b: XY;
   na: number; nb: number; // OSM node ids
   name: string;
+  klass: string; // highway value, for crossing risk
   osmWay: number;
 }
 
@@ -185,6 +188,11 @@ export interface RouteContext {
   stepFree: boolean;
   noJaywalk: boolean;
   mins: number;
+  /** Sun below the horizon: lighting and crossing risk go up. */
+  night: boolean;
+  /** At or below freezing: outdoor stairs are slower. */
+  icy: boolean;
+  precipMm: number;
 }
 
 export interface RouteSummary {
@@ -200,6 +208,10 @@ export interface RouteSummary {
   crossings: number;
   jaywalks: number;
   assumedDoors: number;
+  /** Outdoor metres at night with no mapped lighting. */
+  unlitLen: number;
+  /** Crossings of a primary/secondary or bigger road. */
+  majorCrossings: number;
 }
 
 export type Maneuver = 'start' | 'straight' | 'left' | 'right' | 'uturn' | 'cross' | 'exit' | 'arrive' | 'through' | 'link';

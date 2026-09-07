@@ -1,3 +1,4 @@
+import { RAIN_SATURATION_MM, RAIN_STRESS_MAX } from './constants';
 import type { Wind } from './types';
 
 /**
@@ -38,6 +39,16 @@ export function stress(tC: number): number {
     }
   }
   return 0;
+}
+
+/**
+ * Extra thermal stress from getting rained or snowed on, 0 at dry and rising to
+ * RAIN_STRESS_MAX. Wet clothing is uncomfortable at any temperature, so this is
+ * added to the temperature stress rather than folded into feels-like.
+ */
+export function rainStress(mmPerHour: number): number {
+  if (!(mmPerHour > 0)) return 0;
+  return RAIN_STRESS_MAX * Math.min(1, mmPerHour / RAIN_SATURATION_MM);
 }
 
 export function feelsLike(tAirC: number, sunFrac: number, sunAlt: number, wind: Wind, cloudPct: number): number {

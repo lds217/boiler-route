@@ -4,15 +4,16 @@ export interface WeatherHourly {
   temperature_2m: number[];
   wind_speed_10m: number[];
   cloud_cover: number[];
+  precipitation: number[];
 }
 export interface WeatherState {
   ok: boolean;
-  current: { temperature_2m: number; wind_speed_10m: number; cloud_cover: number } | null;
+  current: { temperature_2m: number; wind_speed_10m: number; cloud_cover: number; precipitation: number } | null;
   hourly: WeatherHourly | null;
   fetchedAt: Date | null;
   err: string | null;
 }
-export interface WeatherSample { tempF: number; mph: number; cloud: number; kind: 'forecast' }
+export interface WeatherSample { tempF: number; mph: number; cloud: number; precipMm: number; kind: 'forecast' }
 
 export async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Promise<Response> {
   const c = new AbortController();
@@ -25,8 +26,9 @@ export async function loadWeather(lat: number, lon: number): Promise<WeatherStat
   const wx: WeatherState = { ok: false, current: null, hourly: null, fetchedAt: null, err: null };
   try {
     const u = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
-      `&current=temperature_2m,wind_speed_10m,cloud_cover&hourly=temperature_2m,wind_speed_10m,cloud_cover` +
-      `&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=3`;
+      `&current=temperature_2m,wind_speed_10m,cloud_cover,precipitation` +
+      `&hourly=temperature_2m,wind_speed_10m,cloud_cover,precipitation` +
+      `&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=mm&timezone=auto&forecast_days=3`;
     const r = await fetchWithTimeout(u, {}, 15000);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
@@ -46,6 +48,9 @@ export function weatherAt(wx: WeatherState, dateStr: string, mins: number): Weat
   const h = Math.floor(mins / 60);
   const key = `${dateStr}T${String(h).padStart(2, '0')}:00`;
   const i = wx.hourly.time.indexOf(key);
-  if (i >= 0) return { tempF: wx.hourly.temperature_2m[i], mph: wx.hourly.wind_speed_10m[i], cloud: wx.hourly.cloud_cover[i], kind: 'forecast' };
+  if (i >= 0) return {
+    tempF: wx.hourly.temperature_2m[i], mph: wx.hourly.wind_speed_10m[i], cloud: wx.hourly.cloud_cover[i],
+    precipMm: wx.hourly.precipitation?.[i] ?? 0, kind: 'forecast',
+  };
   return null;
 }

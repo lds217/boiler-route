@@ -65,7 +65,7 @@
     <div class="tabp" id="tab-cond" hidden>
       <p class="tabnote" id="condcur"></p>
       <div class="wx" id="wx">Fetching live weather…</div>
-      <label class="toggle"><input type="checkbox" id="manual"> Set temperature, wind and clouds manually</label>
+      <label class="toggle"><input type="checkbox" id="manual"> Set temperature, wind, sky and rain manually</label>
       <div class="row2">
         <div class="field"><label for="date">Date</label><input type="date" id="date"></div>
         <div class="field"><label for="tempn">Temperature</label>
@@ -78,6 +78,9 @@
       <div class="row2">
         <div class="field"><label for="wind">Wind</label><select id="wind" disabled><option value="calm">Calm</option><option value="breezy" selected>Breezy</option><option value="windy">Windy</option></select></div>
         <div class="field"><label for="cloud">Sky</label><select id="cloud" disabled><option value="0" selected>Clear</option><option value="40">Partly cloudy</option><option value="80">Overcast</option></select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="precip">Rain or snow</label><select id="precip" disabled><option value="0" selected>None</option><option value="0.5">Drizzle</option><option value="2.5">Steady</option><option value="8">Heavy</option></select></div>
       </div>
       <div class="ctl"><label for="time">Time of day</label><output id="timeout" for="time"></output><input type="range" id="time" min="0" max="1425" step="15"></div>
       <label class="toggle"><input type="checkbox" id="nojaywalk" checked> Only cross streets at mapped crossings</label>
@@ -92,10 +95,11 @@
       <div id="datastats"></div>
       <ul class="data">
         <li><b>OpenStreetMap:</b> building outlines and names, sidewalks and paths, entrances, trees, ground cover, and footways tagged as tunnel, bridge or indoor corridor. Small gaps between mapped sidewalks are closed automatically. Data is bundled and refreshed weekly; Overpass is only queried when no bundle is present.</li>
-        <li><b>Open-Meteo, live:</b> temperature, wind and cloud cover for the chosen date and hour. Cloud cover reduces the sun term.</li>
+        <li><b>Open-Meteo, live:</b> temperature, wind, cloud cover and precipitation for the chosen date and hour. Cloud cover reduces the sun term; rain adds discomfort wherever there is no cover.</li>
         <li><b>Computed:</b> sun position, shadows from building and tree heights, feels-like temperature per segment, comfort-weighted routing, open-hours blocking, turn-by-turn directions.</li>
         <li><b>Comfort model:</b> walking time × (1 + slider × stress), where stress follows the UTCI thermal-stress bands of the segment's feels-like temperature. Direct sun adds up to 10 °C at high sun. Indoors counts as 22 °C. Sources in the source comments.</li>
         <li><b>Doors:</b> OSM entrances are used with their meaning: main and secondary entrances preferred, service doors penalised, exit-only and entrance-only doors are one-way, emergency exits and private doors are never used, wheelchair=no doors are skipped in step-free mode. Buildings with fewer than two usable tagged entrances get assumed doors where sidewalks meet the wall, flagged in the directions.</li>
+        <li><b>Safety, always on:</b> these apply even at the Fastest setting. After dark, paths OSM tags <b>lit=yes</b> are preferred and <b>lit=no</b> costs most, with untagged paths in between. Stepping into a street costs seconds-equivalent by what is crossed, from about 4 s for a residential street to 50 s for a primary road, tripled when there is no crossing and raised again at night. At or below freezing, outdoor stairs are treated as slower.</li>
         <li><b>Streets:</b> the route never crosses a primary to residential street except on a mapped crossing (signals cost more waiting time than a marked crossing). Footways drawn across a street with no crossing node are flagged as unmarked and excluded by default.</li>
         <li><b>Assumed:</b> height = levels × 3.5 m, else 12 m. Trees 10 m. Hours 7 am to 10 pm unless OSM has opening_hours (simple weekday rules are parsed).</li>
         <li><b>Not in OSM:</b> most Purdue skywalks and subwalks. Add them to <b>campus-overrides.json</b> after walking them.</li>

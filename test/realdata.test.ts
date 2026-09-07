@@ -35,6 +35,17 @@ describe.skipIf(!osm)('real Purdue extract', () => {
     for (const b of off) expect(model.nodes[b.id + ':hub']).toBeUndefined();
   });
 
+  it('knows which road most crossings cross, so risk is priced by class', () => {
+    const cross = model.edges.filter((e) => e.crossing);
+    const known = cross.filter((e) => e.crossing!.klass);
+    const byClass = new Map<string, number>();
+    for (const e of known) byClass.set(e.crossing!.klass!, (byClass.get(e.crossing!.klass!) ?? 0) + 1);
+    console.log(`crossings classified: ${known.length}/${cross.length}`, [...byClass].sort((a, b) => b[1] - a[1]));
+    expect(known.length / cross.length).toBeGreaterThan(0.7);
+    // campus is bounded by primary roads; if none are seen, the match is broken
+    expect(byClass.get('primary') ?? 0).toBeGreaterThan(0);
+  });
+
   it('extracts a basemap', () => {
     const bm = extractBasemap(osm!, proj);
     console.log(`ground=${bm.ground.length} lines=${bm.lines.length}`);
