@@ -5,8 +5,8 @@
   "type": "module",
   "description": "Weather-aware pedestrian routing for Purdue's West Lafayette campus",
   "scripts": {
-    "dev": "vite",
-    "dev:https": "HTTPS=1 vite --host",
+    "dev": "vite --host --strictPort",
+    "dev:https": "HTTPS=1 vite --host --strictPort",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
