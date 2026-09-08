@@ -1,5 +1,5 @@
 import {
-  ASSUMED_DOOR_PENALTY_FACTOR, CORRIDOR_FACTOR, CROSSING_STREET_REACH, DOOR_CONNECT, DOOR_REACH,
+  ASSUMED_DOOR_PENALTY_FACTOR, CANOPY_MAX_M, CORRIDOR_FACTOR, CROSSING_STREET_REACH, DOOR_CONNECT, DOOR_REACH,
   DOOR_SECTORS, DOOR_SNAP, GAP_CLOSE, NEVER_WALK, SEC, STREETS, WALKWAYS,
 } from '../constants';
 import {
@@ -107,7 +107,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
   const canopy = opts.heights?.canopy ?? [];
   const cov = opts.heights?.coverage;
   const trees: Tree[] = canopy.length
-    ? canopy.map((c, i): Tree => {
+    ? canopy.filter((c) => c.h <= CANOPY_MAX_M).map((c, i): Tree => {
         const p = proj.xy(c.lat, c.lon);
         const ring: XY[] = [];
         for (let k = 0; k < 10; k++) {
@@ -120,10 +120,11 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
         };
       })
     : extractTrees(idx, proj);
-  if (canopy.length && cov) {
+  if (canopy.length && cov?.length) {
     for (const t of extractTrees(idx, proj)) {
       const [lat, lon] = proj.ll(t.c);
-      if (lat < cov.south || lat > cov.north || lon < cov.west || lon > cov.east) trees.push(t);
+      const covered = cov.some((b) => lat >= b.south && lat <= b.north && lon >= b.west && lon <= b.east);
+      if (!covered) trees.push(t);
     }
   }
   const bInside = (p: XY): Building | undefined =>

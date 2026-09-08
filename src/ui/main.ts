@@ -80,7 +80,7 @@ const issuesUrl = (): string | null => {
 map.attributionControl.addAttribution(
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' +
   (issuesUrl() ? ` · <a href="${issuesUrl()}">Report a map issue</a>` : ''));
-const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, opacity: 0.6 });
+const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, opacity: 1 });
 const groundLayer = L.layerGroup().addTo(map);
 const shadowLayer = L.layerGroup().addTo(map);
 const netLayer = L.layerGroup();
@@ -603,15 +603,16 @@ $('tabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.onclic
 /* ================= conditions ================= */
 // Dragging a slider updates the readout every frame but defers the routing pass,
 // so the thumb never waits on a recompute; releasing it recomputes at once.
-for (const id of ['date', 'tempn', 'wind', 'cloud', 'precip', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk']) {
+for (const id of ['date', 'tempn', 'wind', 'cloud', 'precip', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk', 'crossbld']) {
   $(id).addEventListener('input', () => scheduleUpdate(false));
   $(id).addEventListener('change', () => scheduleUpdate(true));
 }
-$('basemap').addEventListener('change', () => {
+function applyBasemap() {
   const v = ($('basemap') as HTMLSelectElement).value;
-  if (v === 'tiles') { tiles.addTo(map); } else { map.removeLayer(tiles); }
+  if (v === 'tiles') tiles.addTo(map); else map.removeLayer(tiles);
   drawBasemap();
-});
+}
+$('basemap').addEventListener('change', applyBasemap);
 $('shownet').addEventListener('change', (e) => {
   if ((e.target as HTMLInputElement).checked) { buildNet(); netLayer.addTo(map); } else map.removeLayer(netLayer);
 });
@@ -746,6 +747,9 @@ function update() {
   const ctx = buildContext(model, {
     sunFrac, sun, tempC: fToC(tempF), wind: cond.wind, cloudPct: cond.cloud, precipMm: cond.precipMm, w: 0,
     open, stepFree: ($('stepfree') as HTMLInputElement).checked, noJaywalk: ($('nojaywalk') as HTMLInputElement).checked, mins,
+    noCutThrough: !($('crossbld') as HTMLInputElement).checked,
+    // you can always walk out of where you start and into where you are going
+    throughOk: [origin, dest].filter((p) => p?.kind === 'building').map((p) => (p as { id: string }).id),
   });
   // Any change of conditions resets the highlighted route to the comfortable one.
   selected = 'comfort';
@@ -865,7 +869,7 @@ function start(osm: OsmData, sourceNote?: string) {
   if (named.length < 2) { showError(new Error('fewer than two named campus buildings in this block')); return; }
   // a new model invalidates everything keyed to the old one
   shadeCache = null; shadowKey = ''; openKey = '';
-  drawBasemap(); drawModel(); routeLayer.clearLayers();
+  applyBasemap(); drawModel(); routeLayer.clearLayers();
   const links = model.edges.filter((e) => e.kind === 'link').length;
   const lidarN = heights ? model.buildings.filter((b) => b.heightSource === 'lidar').length : 0;
   const src = sourceNote ?? (osm._source ? `from ${osm._source} in ${osm._seconds} s` : 'from the bundled extract');

@@ -1,6 +1,6 @@
 import {
   DEFAULT_BUILDING_HEIGHT, DEFAULT_HOURS, DEFAULT_TREE_CROWN_RADIUS, DEFAULT_TREE_HEIGHT,
-  LEVEL_HEIGHT, SEC,
+  LEVEL_HEIGHT, NEVER_CAMPUS_BUILDING, SEC,
 } from '../constants';
 import { bboxOf, centroid, pointInRing, type Projection } from '../geometry';
 import { INDOOR_C } from '../comfort';
@@ -94,6 +94,8 @@ export function extractBuildings(
   // or an extract from before amenity=university was fetched).
   const onCampus = (c: { x: number; y: number }, tags: OsmTags): boolean => {
     if (tags.building === 'university' || /purdue/i.test(tags.operator || '')) return true;
+    // a garage or a private house inside the grounds is still not somewhere you route through
+    if (NEVER_CAMPUS_BUILDING.has(tags.building ?? '')) return false;
     if (!campusPolys.length) return true;
     return campusPolys.some((ring) => pointInRing(c, ring));
   };

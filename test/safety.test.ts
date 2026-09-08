@@ -135,3 +135,26 @@ describe('ice and rain', () => {
     expect(usesBuilding(wet.path!, two.id)).toBe(true);
   });
 });
+
+describe('cutting through buildings', () => {
+  const model = fake2().model();
+  const two = bld(model, 'TWO');
+
+  it('is allowed by default on a hot day', () => {
+    const { path } = route(model, 'ONE', 'THREE', { tempF: 96, w: 0.7 });
+    expect(usesBuilding(path!, two.id)).toBe(true);
+  });
+
+  it('keeps the route outdoors when switched off, but still reaches the destination', () => {
+    const { path } = route(model, 'ONE', 'THREE', { tempF: 96, w: 0.7, noCutThrough: true });
+    expect(path).not.toBeNull();
+    expect(usesBuilding(path!, two.id)).toBe(false);
+  });
+
+  it('still lets you leave the start and enter the destination', () => {
+    const { path } = route(model, 'ONE', 'THREE', { tempF: 96, w: 0.7, noCutThrough: true });
+    const one = bld(model, 'ONE'), three = bld(model, 'THREE');
+    expect(usesBuilding(path!, one.id)).toBe(true);
+    expect(usesBuilding(path!, three.id)).toBe(true);
+  });
+});

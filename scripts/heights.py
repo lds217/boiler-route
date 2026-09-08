@@ -34,6 +34,7 @@ MIN_BUILDING_FT = 6.6        # ignore cars/clutter when sampling a footprint
 CANOPY_MIN_M = 4.0           # §2: threshold outside footprints
 CANOPY_BLOCK_CELLS = 12      # 12 x 5 ft = 60 ft ≈ 18 m aggregation blocks
 CANOPY_MIN_FRACTION = 0.15   # block must be at least this canopied
+CANOPY_MAX_M = 35.0          # taller than any tree here: NDHM noise (birds, masts, aircraft)
 MARGIN_FT = 300              # ~90 m: max realistic tree-shadow reach into the bbox
 
 tiles = sys.argv[1:] or sorted(glob.glob(str(ROOT / "*_ndhm.tif")))
@@ -71,6 +72,7 @@ srcs = [rasterio.open(t) for t in tiles]
 mosaic, transform = merge(srcs)
 band = mosaic[0]
 crs = srcs[0].crs
+tile_bounds = [s.bounds for s in srcs]   # per tile, not the mosaic: corners may be missing
 for s in srcs:
     s.close()
 print(f"mosaic {band.shape} from {len(tiles)} tile(s)")
@@ -126,6 +128,7 @@ inside_bld = geometry_mask(bld_polys, out_shape=band.shape, transform=transform,
 canopy_mask = np.isfinite(window) & (window * FT >= CANOPY_MIN_M) & ~inside_bld
 
 canopy = []
+dropped = 0
 B = CANOPY_BLOCK_CELLS
 cell_ft = transform.a  # 5 ft
 for br in range(0, canopy_mask.shape[0], B):
@@ -135,6 +138,10 @@ for br in range(0, canopy_mask.shape[0], B):
         if n < blk.size * CANOPY_MIN_FRACTION:
             continue
         hvals = window[br:br + B, bc:bc + B][blk]
+        h_m = float(np.percentile(hvals, 90)) * FT
+        if h_m > CANOPY_MAX_M:
+            dropped += 1
+            continue
         rows, cols = np.nonzero(blk)
         # centre of the canopied cells, in raster CRS then WGS84
         x = transform.c + (c0 + bc + cols.mean() + 0.5) * cell_ft
@@ -144,23 +151,24 @@ for br in range(0, canopy_mask.shape[0], B):
         canopy.append({
             "lat": round(lat, 6), "lon": round(lon, 6),
             "r": round(radius_m, 1),
-            "h": round(float(np.percentile(hvals, 90)) * FT, 1),
+            "h": round(h_m, 1),
         })
-print(f"canopy: {len(canopy)} circles (block {B * cell_ft:.0f} ft, threshold {CANOPY_MIN_M} m)")
+print(f"canopy: {len(canopy)} circles (block {B * cell_ft:.0f} ft, threshold {CANOPY_MIN_M} m), {dropped} dropped over {CANOPY_MAX_M} m")
 
 # ---- where the tiles actually hold data, so the app can keep OSM trees elsewhere ----
-rows, cols = np.nonzero(np.isfinite(band))
-rx0, rx1 = transform.c + cols.min() * cell_ft, transform.c + (cols.max() + 1) * cell_ft
-ry0, ry1 = transform.f - (rows.max() + 1) * cell_ft, transform.f - rows.min() * cell_ft
-corners = [to_wgs.transform(x, y) for x in (rx0, rx1) for y in (ry0, ry1)]
-lons = [c[0] for c in corners]
-lats = [c[1] for c in corners]
-# inner box: never claim coverage the reprojected corners don't all share
-coverage = {
-    "south": round(max(lats[0], lats[2]), 6), "north": round(min(lats[1], lats[3]), 6),
-    "west": round(max(lons[0], lons[1]), 6), "east": round(min(lons[2], lons[3]), 6),
-}
-print(f"coverage: lat {coverage['south']}..{coverage['north']}, lon {coverage['west']}..{coverage['east']}")
+def wgs_box(b):
+    """Inner lat/lon box of a raster bound: never claim more than every corner shares."""
+    corners = [to_wgs.transform(x, y) for x in (b.left, b.right) for y in (b.bottom, b.top)]
+    lons = [c[0] for c in corners]
+    lats = [c[1] for c in corners]
+    return {
+        "south": round(max(lats[0], lats[2]), 6), "north": round(min(lats[1], lats[3]), 6),
+        "west": round(max(lons[0], lons[1]), 6), "east": round(min(lons[2], lons[3]), 6),
+    }
+
+coverage = [wgs_box(b) for b in tile_bounds]
+for c in coverage:
+    print(f"coverage tile: lat {c['south']}..{c['north']}, lon {c['west']}..{c['east']}")
 
 out = {
     "_generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),

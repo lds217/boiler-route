@@ -164,8 +164,8 @@ export interface HeightsData {
   _source?: string;
   buildings: Record<string, number>; // OSM id → height in m (90th percentile NDHM)
   canopy: CanopyCircle[];
-  /** Where the lidar tiles actually have data; outside it OSM trees are kept. */
-  coverage?: { south: number; west: number; north: number; east: number };
+  /** One box per lidar tile; outside all of them OSM trees are kept. */
+  coverage?: { south: number; west: number; north: number; east: number }[];
 }
 
 export type Place =
@@ -193,6 +193,9 @@ export interface RouteContext {
   /** At or below freezing: outdoor stairs are slower. */
   icy: boolean;
   precipMm: number;
+  /** Indoor and link edges are barred except for the buildings in throughOk. */
+  noCutThrough: boolean;
+  throughOk: Set<string>;
 }
 
 export interface RouteSummary {

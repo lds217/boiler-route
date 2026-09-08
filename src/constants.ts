@@ -1,6 +1,7 @@
 /** Study area (south, west, north, east). Widen freely; everything scales.
- *  South edge sits just past Williams Street (~40.4185). */
-export const BBOX: [number, number, number, number] = [40.4175, -86.918, 40.4302, -86.9105];
+ *  South edge sits just past Williams Street (~40.4185); the west edge reaches
+ *  two blocks past the campus boundary into the neighbourhood. */
+export const BBOX: [number, number, number, number] = [40.4175, -86.922, 40.4302, -86.9105];
 
 export const WALK_SPEED = 1.35; // m/s, typical campus pace
 export const INDOOR_FACTOR = 1.2; // doors, people, stairs
@@ -18,6 +19,8 @@ export const DEFAULT_HOURS: [number, number] = [7, 22];
 export const DEFAULT_BUILDING_HEIGHT = 12; // m
 export const LEVEL_HEIGHT = 3.5; // m per building:level
 export const DEFAULT_TREE_HEIGHT = 10; // m
+/** Taller than any tree here: NDHM noise (birds, masts, aircraft). Also enforced in heights.py. */
+export const CANOPY_MAX_M = 35;
 export const DEFAULT_TREE_CROWN_RADIUS = 6; // m
 
 /** Seconds added for doors and crossings. Door values prefer what OSM knows. */
@@ -78,6 +81,12 @@ export const STREETS = new Set([
 export const WALKWAYS = new Set([
   'footway', 'path', 'pedestrian', 'steps', 'corridor', 'service', 'living_street',
   'cycleway', 'track', 'bridleway', 'crossing',
+]);
+
+/** Building types that are never a campus destination, even inside the university grounds. */
+export const NEVER_CAMPUS_BUILDING = new Set([
+  'house', 'detached', 'semidetached_house', 'bungalow', 'garage', 'garages', 'carport',
+  'shed', 'hut', 'roof', 'container', 'static_caravan',
 ]);
 
 /** Streets never walked along even if they claim to be walkable. */

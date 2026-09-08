@@ -84,12 +84,18 @@ describe.skipIf(!osm)('real Purdue extract', () => {
     expect(m.trees.length).toBeGreaterThan(100); // canopy circles replaced OSM tree points
     // The tiles cover only part of the bbox; south of them OSM trees must survive,
     // otherwise uncovered ground routes as treeless full sun.
-    const cov = heights!.coverage;
-    if (cov && cov.south > BBOX[0]) {
-      const south = m.trees.filter((t) => proj.ll(t.c)[0] < cov.south);
-      expect(south.length, 'OSM trees kept south of lidar coverage').toBeGreaterThan(10);
-      const canopyS = heights!.canopy.filter((c) => c.lat < cov.south);
-      expect(canopyS.length, 'no canopy circles below coverage').toBe(0);
+    const cov = heights!.coverage ?? [];
+    const covered = (lat: number, lon: number) =>
+      cov.some((b) => lat >= b.south && lat <= b.north && lon >= b.west && lon <= b.east);
+    if (cov.length) {
+      // every canopy circle must come from inside a tile
+      expect(heights!.canopy.every((c) => covered(c.lat, c.lon))).toBe(true);
+      // and any OSM tree outside every tile has to survive as a caster
+      const outside = m.trees.filter((t) => { const [la, lo] = proj.ll(t.c); return !covered(la, lo); });
+      const osmOutside = buildModel(osm!, proj, { weekday: 3 }).trees
+        .filter((t) => { const [la, lo] = proj.ll(t.c); return !covered(la, lo); });
+      console.log(`casters outside lidar tiles: ${outside.length} kept of ${osmOutside.length} OSM trees`);
+      expect(outside.length).toBe(osmOutside.length);
     }
     const t0 = performance.now();
     const { sunFrac } = computeShade(m, { alt: Math.PI / 3, bearing: Math.PI });

@@ -48,6 +48,8 @@ export function edgeCost(e: Edge, ctx: RouteContext, u: string): number {
   if (e.kind !== 'outdoor') {
     const blds = e.kind === 'indoor' ? [e.bld] : [e.bldA, e.bldB].filter(Boolean);
     if (blds.some((id) => id && !ctx.open[id])) return Infinity;
+    // "no cutting through": indoors is only for the buildings you start or end in
+    if (ctx.noCutThrough && blds.some((id) => id && !ctx.throughOk.has(id))) return Infinity;
     const st = blds.length && blds[0] && ctx.indoorStress[blds[0]] !== undefined
       ? Math.max(...blds.map((id) => (id ? ctx.indoorStress[id] ?? ctx.defaultIndoorStress : ctx.defaultIndoorStress)))
       : ctx.defaultIndoorStress;
@@ -169,6 +171,10 @@ export interface ContextInputs {
   mins: number;
   /** Rain or melted snow, mm/h. Adds stress wherever there is no cover. */
   precipMm?: number;
+  /** Route outdoors except through the endpoint buildings themselves. */
+  noCutThrough?: boolean;
+  /** Buildings the route may still pass through: normally origin and destination. */
+  throughOk?: string[];
 }
 
 /** Precompute per-edge feels-like and stress, and per-building indoor stress. */
@@ -194,5 +200,6 @@ export function buildContext(model: Model, inp: ContextInputs): RouteContext {
     open: inp.open, hot: inp.tempC >= 18, tC: inp.tempC,
     stepFree: inp.stepFree, noJaywalk: inp.noJaywalk, mins: inp.mins,
     night: inp.sun.alt <= 0, icy: inp.tempC <= ICE_TEMP_C, precipMm: inp.precipMm ?? 0,
+    noCutThrough: inp.noCutThrough ?? false, throughOk: new Set(inp.throughOk ?? []),
   };
 }
