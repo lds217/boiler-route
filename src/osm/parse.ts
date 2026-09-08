@@ -2,6 +2,7 @@ import {
   DEFAULT_BUILDING_HEIGHT, DEFAULT_HOURS, DEFAULT_TREE_CROWN_RADIUS, DEFAULT_TREE_HEIGHT,
   LEVEL_HEIGHT, NEVER_CAMPUS_BUILDING, SEC,
 } from '../constants';
+import codes from '../data/building-codes.json';
 import { bboxOf, centroid, pointInRing, type Projection } from '../geometry';
 import { INDOOR_C } from '../comfort';
 import { parseHours } from '../hours';
@@ -29,6 +30,8 @@ export const ringOf = (way: OsmWay, idx: OsmIndex, proj: Projection): RingPoint[
   way.nodes.map((id) => idx.nodes[id]).filter(Boolean).map((n) => ({ ...proj.xy(n.lat, n.lon), osm: n.id }));
 
 /** Abbreviation from initials when OSM has no short_name/ref. */
+const BUILDING_CODES: Record<string, string> = codes;
+
 export function initials(name: string): string {
   const skip = new Set(['of', 'and', 'the', 'for', 'hall', 'building', 'center', 'centre', 'laboratory', 'lab']);
   const w = name.replace(/[()]/g, '').split(/\s+/).filter((x) => !skip.has(x.toLowerCase()));
@@ -102,8 +105,13 @@ export function extractBuildings(
   const add = (id: number, tags: OsmTags, ring: RingPoint[] | undefined) => {
     if (!ring || ring.length < 4) return;
     if (ring[0].osm === ring[ring.length - 1].osm) ring = ring.slice(0, -1);
-    const name = tags.name || tags['addr:housename'] || tags.description || null;
-    const abbr = tags.short_name || tags.ref || (name ? initials(name) : '#' + id);
+    const rawName = tags.name || tags['addr:housename'] || tags.description || null;
+    // Purdue's own building code, the one on signs and in course schedules, beats
+    // anything we could derive from the name.
+    const code = rawName ? BUILDING_CODES[rawName] : undefined;
+    const abbr = code || tags.short_name || tags.ref || (rawName ? initials(rawName) : '#' + id);
+    // "Wilmeth Active Learning Center (WALC)" reads better once the code is a label
+    const name = rawName && code ? rawName.replace(new RegExp(`\\s*\\(${code}\\)\\s*$`), '') : rawName;
     const levels = parseFloat(tags['building:levels']);
     const lidar = lidarHeights[String(id)];
     const height = lidar || parseFloat(tags.height) || (levels ? levels * LEVEL_HEIGHT : DEFAULT_BUILDING_HEIGHT);

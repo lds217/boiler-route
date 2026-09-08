@@ -150,3 +150,16 @@ describe('manual links', () => {
     expect(link!.b).toBe(bld(model, 'THREE').id + ':hub');
   });
 });
+
+describe('Purdue building codes', () => {
+  it('uses the official code as the abbreviation where one is known', async () => {
+    const codes = (await import('../src/data/building-codes.json')).default as Record<string, string>;
+    // the table is only useful if it carries the codes students actually say
+    for (const c of ['WALC', 'PMU', 'LWSN', 'ELLT', 'HOVD', 'WTHR', 'MSEE', 'KNOY'])
+      expect(Object.values(codes), `${c} missing from the code table`).toContain(c);
+    // and every code must look like a code, not a sentence
+    for (const [name, code] of Object.entries(codes)) {
+      expect(code, name).toMatch(/^[A-Z0-9][A-Z0-9-]{0,5}$/);
+    }
+  });
+});

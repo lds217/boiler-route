@@ -1,0 +1,218 @@
+2550 2550 Northwestern Ave. Purdue Research Park (Inset)
+AACC Asian American and Asian Resource and Cultural Center F6
+AAPF Ag Alumni Seed Phenotyping Facility F8
+ABE Agricultural and Biological Engineering F9
+ADDL Willie M. Reed Animal Disease Diagnostic Laboratory G10
+ADM ADM Agricultural Innovation Center E11
+AET Amelia Earhart Terminal B11
+ADPA-C Aspire at Discovery Park D8
+AERO Aerospace Science Laboratory C11
+AGAD Agricultural Administration Building G8
+AHF Animal Holding Facility G10
+AQUA Burke (Morgan J.) Boilermaker Aquatic Center D6
+AR Armory F6
+ARMS Armstrong (Neil) Hall of Engineering G5
+ASB Airport Service Building (Shop Services) A11-12
+BALY Bailey (Ralph and Bettye) Hall H6-7
+BCC Black Cultural Center F6
+BCHM Biochemistry Building F8
+BHEE Brown (Max W & Maileen) Family Hall H6
+BIDC Bechtel Innovation Design Center F6
+BIND Bindley Bioscience Center D8
+BOWN Bowen (Robert L. & Terry L. ) Laboratory H12 (Inset)
+BREQ Brunner (David and Bonnie) Equine Hospital G10
+BRES Brees (Drew and Brittany) Student-Athlete Academic Center F3
+BRFM Brunner (David and Bonnie) Farm Animal Hospital H10
+BRUN Brunner (David and Bonnie) Small Animal Hospital G10
+BRK Birck Nanotechnology Center D8
+BRNG Beering (Steven C.) Hall of Liberal Arts and Education G7
+BRWN Brown (Herbert C.) Laboratory of Chemistry H7
+BTV Boiler Television Building E3
+CHAF Chaffee Hall A9
+CHAS Chaney-Hale Hall of Science G6
+CL50 Class of 1950 Lecture Hall G7
+COMP Composites Laboratory C11
+CONT Continuum C8
+CONV Convergence C8
+CREC Cordova (France A.) Recreational Sports Center E6
+CRTN Creighton (Hobart and Russell) Hall of Animal Sciences F9
+DANL Daniel (William H.) Turfgrass Research Center B1
+DAUC Dauch (Dick and Sandy) Alumni Center H9
+DLR Hall for Discovery and Learning Research E9
+DMNT DeMent (Clayton W.) Fire Station D6
+DOYL Doyle (Leo Philip) Laboratory G10
+DRUG Drug Discovery F9
+DSAI Hall of Data Science and AI G6
+DUDL Dudley Hall H6
+DYE Pete Dye Clubhouse C1
+ECEC Purdue University Early Care and Education Center A7
+EEL Entomology Environmental Laboratory G8
+EHSA Equine Health Sciences Annex G10
+EHSB Equine Health Sciences Building G10
+ELLT Elliott (Edward C.) Hall of Music G6
+FLEX Flex Laboratories D9
+FOPN Flight Operations Building B11
+FORS Forestry Building G8
+FPRD Forest Products Building G8
+FRNY Forney Hall of Chemical Engineering G5
+FWLR Fowler (Harriet O. and James M., Jr.) Memorial House E7
+GCMB Golf Course Maintenance Barn C2
+GMF Grounds Maintenance Facility F11
+GMGF Grounds Maintenance Greenhouse Facilities E11
+GRIS Grissom Hall H7
+GRS Grounds Service Building E8
+GSMB Golf Storage Maintenance Building C2
+HAAS Haas (Felix) Hall G7
+HAGL Hagle (Marc and Sharon) Hall F6
+HAMP Hampton (Delon and Elizabeth) Hall of Civil Engineering G5
+HANS Hansen (Arthur G.) Life Sciences Research Building F9
+HERL Herrick Acoustics E8
+HGRH Horticultural Greenhouse G9
+HIKS Hicks (John W.) Undergraduate Library H8
+HLAB Herrick Laboratories E8
+HMMT Hazardous Materials Management Trailer H11
+HNLY Hanley (Bill and Sally) Hall E7
+HOCK Hockmeyer (Wayne T. and Mary T.) Hall of Structural Biology E9
+HORT Horticulture Building G9
+HOVD Hovde (Frederick L.) Hall of Administration G6
+HULL Hull All-American Marching Band D6
+JNSN Johnson (Helen R.) Hall of Nursing G6
+KFPC Kozuch Football Performance Complex F3
+KNOY Knoy (Maurice G.) Hall of Technology H6
+KRAN Krannert Building H8
+KRCH Krach Leadership Center E6
+LAMB Lambert (Ward L.) Fieldhouse and Gymnasium G4
+LCCP Latino Cultural Center at Purdue F6
+LG Lambert Green G4
+LILY Lilly Hall of Life Sciences F8
+LMBS Lambertus Hall H6
+LMSB Laboratory Materials Storage Building H11
+LMST Laboratory Materials Storage Trailer H11
+LOLC Land O'Lakes Center for Experiential Learning and Purina Pavilion F9
+LSA Life Science Animal Building F8
+LSPS Life Science Plant and Soils Laboratory F8
+LSR Life Science Ranges (Greenhouse and Service Building) F8
+LWSN Lawson (Richard and Patricia) Computer Science Building F6
+LYLE Lyles-Porter Hall F9
+LYNN Lynn (Charles J.) Hall of Veterinary Medicine G10
+MACK Mackey (Guy J.) Arena F, G4
+MANN Mann (Gerald D. and Edna E.) Hall D8
+MATH Mathematical Sciences Building G7
+ME Mechanical Engineering Building H6
+MJIS Jischke (Martin C.) Hall of Biomedical Engineering E9
+MMDC Materials Management and Distribution Center F11
+MMS1 Materials Management Storage Building 1 F12
+MOLL Mollenkopf Athletic Center F3
+MRGN Morgan (Burton D.) Center for Entrepreneurship D8
+MRRT Marriott Hall F7,8
+MSEE Materials and Electrical Engineering Building H5
+MTHW Matthews Hall F8
+NACC Native American Educational and Cultural Center F6
+NISW Niswonger Aviation Technology Building B11
+NLSN Nelson (Philip E.) Hall of Food Science G9
+OLMN Ollman (Melvin L.) Golfcart Barn C1
+PAGE Page (Thomas A.) Pavilion H12 (Inset)
+PAO Pao (Yue-Kong) Hall of Visual and Performing Arts H8
+PDYE Pete Dye Clubhouse C2
+PFEN Pfendler (David C.) Hall of Agriculture G8
+PFSB Physical Facilities Service Building F12
+PGSC Purdue Graduate Student Center H5
+PHYS Physics Building G5
+PJEC Jischke (Patty) Early Care and Education Center Purdue Research Park (Inset)
+PMRI Purdue Magnetic Resonance Imaging Facility G9
+PMU Purdue Memorial Union H7
+PMUC Purdue Memorial Union Club H7
+POTR Potter (A.A.) Engineering Center H6
+PRCE Peirce Hall G7
+PSYC Psychological Sciences Building G6, 7
+PUSH Purdue University Student Health Center F, G5
+PVAB Purdue Village Administration Building D9
+RAIL American Railway Building H6
+RAWL Rawls (Jerry S.) Hall H8
+RHPH Heine (Robert E.) Pharmacy Building G5
+SC Stanley Coulter Hall G7
+SCHM Helen B. Schleman Hall G7
+SCHO Global Policy Research Institute (Schowe House) F1
+SCPA Slayter Center of Performing Arts E4
+SIML Holleman-Niswonger Simulator Center A11
+SMLY Smalley (John C.) Center for Housing and Food Services Administration D6
+SMTH Smith Hall F8
+SOIL Soil Erosion Laboratory, National E9
+SPUR Spurgeon (Tom) Golf Training Center C1
+SRPL Surplus Operations Building F11
+STDM Ross-Ade Stadium F3
+STEW Stewart Center H7
+STON Stone (Winthrop E.) Hall G8
+TEL Telecommunications Building F7
+TERM Terminal Building B11
+TERY Terry (Oliver P.) House E8, 9
+TREC Turf Recreation Exercise Center D6
+TSWF Transportation Service Wash Facility G12
+UC University Church I7
+UNIV University Hall G7
+UPOB Utility Plant Office Building H11
+UPOF Utility Plant Office Facility H10
+UPSB Utility Plant Storage Building G11
+VA1 Veterinary Animal Isolation Building 1 G10
+VA2 Veterinary Animal Isolation Building 2 G10
+VCPR Veterinary Center for Paralysis Research G10
+VLAB Veterinary Laboratory Animal Building G10
+VMIF Veterinary Medicine Isolation Facility G10
+VOIN Voinoff (Samuel) Golf Pavilion C1
+VPRB Veterinary Pathobiology Research Building F9, 10
+VPTH Veterinary Pathology Building G9
+WADE Wade (Walter W.) Utility Plant H11
+WALC Wilmeth (Thomas S. and Harvey D.) Active Learning Center G6
+WANG Wang (Seng-Liang) Hall H5
+WEST Westwood (President's Home) A5, 6
+WGLR Women's Golf Locker Room D1
+WSLR Whistler (Roy L.) Hall of Agricultural Research G8
+WTHR Wetherill (Richard Benbridge) Laboratory of Chemistry G7
+YONG Young (Ernest C.) Hall H8
+HARF Hypersonics and Applied Research Facility
+ZL1 Combustion Research Laboratory
+ZL2 Gas Dynamics Research Laboratory
+ZL3 High Pressure Research Laboratory
+ZL4 Propulsion Research Laboratory
+ZL5 Turbomachinery Fluid Dynamics Laboratory
+ZL8 High Pressure Combustion Laboratory
+ZL9 Zucrow High Speed Propulsion Lab
+3WST Third and West B7
+CARY Cary (Franklin Levering) Quadrangle F4
+DUHM Duhme (Ophelia) Residence Hall E7
+ERHT Earhart (Amelia) Residence Hall D7
+FORD Ford (Fred and Mary) Dining Court E4
+FST First Street Towers D7
+HARR Harrison (Benjamin) Residence Hall C7
+HAWK Hawkins (George A.) Hall H8
+HCRS Honors College and Residences South E7
+HILL Hillenbrand Residence Hall C7
+HLTP Hilltop Apartments E3
+LEES Lee-Such Tower E7
+MCUT McCutcheon (John T.) Residence Hall C7
+MRDH Meredith (Virginia C.) Residence Hall D7
+MRDS Meredith (Virginia C.) Residence Hall South D7
+OWEN Owen (Richard) Residence Hall E4
+PKRF Parker (Frieda) Residence Hall E6
+PKRW Parker (Winifred) Residence Hall E6
+SH South Hall C7
+SHLY Shealy (Frances M.) Residence Hall E7
+SHRV Shreve (Eleanor B.) Residence Hall D7
+TARK Tarkington (Newton Booth) Residence Hall E5
+VAWT Vawter (Everett B.) Residence Hall E6
+WARN Warren (Martha E. and Eugene K.) Residence Hall E7
+WDCT Wiley Dining Court E6
+WILY Wiley (Harvey W.) Residence Hall E6
+WOOD Wood (Elizabeth G. and William R.) Residence Hall E7
+BBCH Purdue Baseball Clubhouse
+BBPB Purdue Baseball Press Box
+SBCH Purdue Softball Clubhouse
+SBPB Purdue Softball Press Box
+SCHW Schwartz (Dennis J. and Mary Lou) Tennis Center
+SOCC Purdue Women's Soccer Building
+PGG Grant Street Parking Garage I7
+PGH Harrison Street Parking Garage F9
+PGMD McCutcheon Drive Parking Garage C7
+PGNW Northwestern Avenue Parking Garage H5
+PGU University Street Parking Garage F7
+PGW Wood Street Parking Garage H8
