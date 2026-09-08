@@ -1,7 +1,7 @@
-/** Study area (south, west, north, east). Widen freely; everything scales.
- *  South edge sits just past Williams Street (~40.4185); the west edge reaches
- *  two blocks past the campus boundary into the neighbourhood. */
-export const BBOX: [number, number, number, number] = [40.4175, -86.922, 40.4302, -86.9105];
+/** Study area (south, west, north, east), set to the streets that bound campus:
+ *  Harrison Street south, North Grant Street east, North Martin Jischke Drive
+ *  west, Stadium Avenue north. Widen freely; everything scales. */
+export const BBOX: [number, number, number, number] = [40.4200, -86.9226, 40.4302, -86.9103];
 
 export const WALK_SPEED = 1.35; // m/s, typical campus pace
 export const INDOOR_FACTOR = 1.2; // doors, people, stairs

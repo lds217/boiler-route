@@ -22,8 +22,32 @@ export function computeShade(model: Model, sun: SunPosition): ShadeResult {
   const tanAlt = Math.tan(sun.alt);
   const casters = [...buildings, ...trees].map((s) => ({ s, L: Math.min(s.height / tanAlt, MAX_SHADOW) }));
 
+  /*
+   * A point is shaded when some caster sits between it and the sun, so the only
+   * points a caster can shade lie within L of it, opposite the sun direction.
+   * Bucketing casters into that footprint turns the per-sample scan over every
+   * caster into a lookup of the few that can possibly matter.
+   */
+  const CELL = 64; // m
+  const grid = new Map<number, number[]>();
+  const key = (cx: number, cy: number) => cx * 100000 + cy;
+  casters.forEach(({ s, L }, i) => {
+    const x0 = Math.min(s.bbox.x0, s.bbox.x0 - u.x * L), x1 = Math.max(s.bbox.x1, s.bbox.x1 - u.x * L);
+    const y0 = Math.min(s.bbox.y0, s.bbox.y0 - u.y * L), y1 = Math.max(s.bbox.y1, s.bbox.y1 - u.y * L);
+    for (let cx = Math.floor(x0 / CELL); cx <= Math.floor(x1 / CELL); cx++)
+      for (let cy = Math.floor(y0 / CELL); cy <= Math.floor(y1 / CELL); cy++) {
+        const k = key(cx, cy);
+        let lst = grid.get(k);
+        if (!lst) { lst = []; grid.set(k, lst); }
+        lst.push(i);
+      }
+  });
+
   const shaded = (p: XY): boolean => {
-    for (const { s, L } of casters) {
+    const lst = grid.get(key(Math.floor(p.x / CELL), Math.floor(p.y / CELL)));
+    if (!lst) return false;
+    for (const i of lst) {
+      const { s, L } = casters[i];
       if (p.x < s.bbox.x0 - L || p.x > s.bbox.x1 + L || p.y < s.bbox.y0 - L || p.y > s.bbox.y1 + L) continue;
       const q = { x: p.x + u.x * L, y: p.y + u.y * L };
       if (pointInRing(p, s.ring) || rayHitsRing(p, q, s.ring)) return true;

@@ -170,6 +170,14 @@ coverage = [wgs_box(b) for b in tile_bounds]
 for c in coverage:
     print(f"coverage tile: lat {c['south']}..{c['north']}, lon {c['west']}..{c['east']}")
 
+def in_coverage(c):
+    return any(b["south"] <= c["lat"] <= b["north"] and b["west"] <= c["lon"] <= b["east"] for b in coverage)
+
+
+before = len(canopy)
+canopy = [c for c in canopy if in_coverage(c)]
+print(f"canopy inside the reported coverage: {len(canopy)} ({before - len(canopy)} trimmed at tile edges)")
+
 out = {
     "_generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     "_source": "Indiana 2017-2019 3DEP lidar NDHM, " + ", ".join(Path(t).name for t in tiles),

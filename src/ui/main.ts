@@ -53,11 +53,11 @@ const ll = (p: { x: number; y: number }): [number, number] => proj.ll(p);
 
 /* ================= map ================= */
 // Extra canvas padding renders past the viewport so panning doesn't redraw every frame.
-const map = L.map('map', { zoomControl: false, preferCanvas: true, renderer: L.canvas({ padding: 0.5 }) }).setView([CAMPUS.lat, CAMPUS.lon], 17);
+const map = L.map('map', { zoomControl: false, preferCanvas: true, renderer: L.canvas({ padding: window.innerWidth < 820 ? 0.2 : 0.5 }) }).setView([CAMPUS.lat, CAMPUS.lon], 17);
 L.control.zoom({ position: 'topright' }).addTo(map);
 const syncLabels = () => {
   const z = map.getZoom();
-  document.body.classList.toggle('lowzoom', z < 16);
+  syncBuildingLabels();
   // street names only once there is room for them
   if (z >= 17) labelLayer.addTo(map); else map.removeLayer(labelLayer);
 };
@@ -89,6 +89,22 @@ const bldLayer = L.layerGroup().addTo(map);
 const pinLayer = L.layerGroup().addTo(map);
 L.rectangle([[BBOX[0], BBOX[1]], [BBOX[2], BBOX[3]]], { color: '#555960', weight: 1, dashArray: '4 6', fill: false, interactive: false }).addTo(map);
 const bldShapes: Record<string, L.Polygon> = {};
+const treeLayer = L.layerGroup().addTo(map);
+/** Permanent tooltips are DOM nodes Leaflet repositions on every move, so they
+    are bound only at the zooms that show them. */
+let namedPolys: { poly: L.Polygon; abbr: string; id: string }[] = [];
+let labelsBound = false;
+let lastOpen: Record<string, boolean> = {};
+function syncBuildingLabels() {
+  const want = map.getZoom() >= 16;
+  if (want === labelsBound) return;
+  labelsBound = want;
+  for (const { poly, abbr, id } of namedPolys) {
+    if (!want) { poly.unbindTooltip(); continue; }
+    poly.bindTooltip(abbr, { permanent: true, direction: 'center', className: 'bl' });
+    if (lastOpen[id] === false) poly.getTooltip()?.getElement()?.classList.add('closed');
+  }
+}
 
 const GROUND_FILL: Record<string, string> = {
   green: '#DCDCC6', wood: '#CBCFB2', water: '#C4D6D3', parking: '#E3DFD2', pitch: '#D5D9C0', sand: '#EBD99F', dirt: '#DED7C6',
@@ -163,20 +179,41 @@ function buildNet() {
     L.polyline([A, B], { pane: 'net', ...st }).addTo(netLayer);
   }
 }
+
+/** Leaflet fills a multi-ring path with one rule, so rings must wind alike or
+    nonzero cancels them. Returns rings ready for a single L.polygon. */
+function multiRings(rings: XY[][]): [number, number][][][] {
+  return rings.map((r) => {
+    const pts = r.map(ll);
+    let twiceArea = 0;
+    for (let i = 0, n = pts.length; i < n; i++) {
+      const p = pts[i], q = pts[(i + 1) % n];
+      twiceArea += p[0] * q[1] - q[0] * p[1];
+    }
+    return [twiceArea < 0 ? pts.reverse() : pts];
+  });
+}
+
 function drawModel() {
   if (!model) return;
-  bldLayer.clearLayers(); netLayer.clearLayers(); netBuilt = false;
+  bldLayer.clearLayers(); treeLayer.clearLayers(); netLayer.clearLayers();
+  netBuilt = false; namedPolys = []; labelsBound = false;
   for (const b of model.buildings) {
     // Off-campus buildings are scenery: muted, unlabeled, clicks fall through to the map.
     const poly = L.polygon(b.ring.map(ll), b.campus
       ? { color: '#A79470', weight: 1, fillColor: '#E0D6BE', fillOpacity: 0.85, bubblingMouseEvents: false }
       : { color: '#B4AFA3', weight: 0.8, fillColor: '#E4E1D9', fillOpacity: 0.6, interactive: false }).addTo(bldLayer);
-    if (b.campus && b.named) poly.bindTooltip(b.abbr, { permanent: true, direction: 'center', className: 'bl' });
+    if (b.campus && b.named) namedPolys.push({ poly, abbr: b.abbr, id: b.id });
     if (b.campus) poly.on('click', () => { if (b.named) askPlace({ kind: 'building', id: b.id, label: `${b.abbr}  ${b.name}` }, ll(b.c)); });
     bldShapes[b.id] = poly;
   }
-  for (const t of model.trees)
-    L.circle(ll(t.c), { radius: t.r, color: '#93A07E', weight: 1, fillColor: '#C6CEB4', fillOpacity: 0.7, interactive: false }).addTo(bldLayer);
+  // Thousands of separate circle layers made panning crawl on a phone; one
+  // multipolygon is a single canvas path and overlaps read as one flat tone.
+  if (model.trees.length)
+    L.polygon(multiRings(model.trees.map((t) => t.ring)), {
+      pane: 'ground', stroke: false, fillColor: '#C6CEB4', fillOpacity: 0.75,
+      fillRule: 'nonzero', interactive: false,
+    }).addTo(treeLayer);
 }
 
 map.on('click', (e) => {
@@ -726,6 +763,7 @@ function update() {
   // Open/closed styling also only changes with the clock.
   if (openKey !== shadeKey) {
     openKey = shadeKey;
+    lastOpen = open;
     for (const b of model.buildings) {
       if (!b.campus) continue; // scenery keeps its muted style
       bldShapes[b.id]?.setStyle({ fillColor: open[b.id] ? '#E0D6BE' : '#E9E5D9', dashArray: open[b.id] ? undefined : '3 3' });
