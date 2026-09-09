@@ -140,6 +140,18 @@ describe('manual links', () => {
   const model = fake2().model({
     overrides: { manualLinks: [{ a: 'One Hall', b: 'Three Hall', kind: 'skywalk', verified: false, note: 'walk it' }] },
   });
+  it('skips a link to a building that has no hub instead of crashing', () => {
+    const f = fake3();
+    // campus polygon around Alpha and Beta only, so Gamma is off campus and has
+    // no hub node for a link to attach to
+    f.way([[-170, -55], [50, -55], [50, 55], [-170, 55], [-170, -55]], { amenity: 'university', name: 'Test U' });
+    const m2 = f.model({
+      overrides: { manualLinks: [{ a: 'Alpha Hall', b: 'Gamma Hall', kind: 'subwalk', verified: false }] },
+    });
+    expect(m2.nodes[bld(m2, 'GAMM').id + ':hub']).toBeUndefined();
+    expect(m2.edges.some((e) => e.manual)).toBe(false);
+  });
+
   it('adds a hub-to-hub link edge matched by name', () => {
     const link = model.edges.find((e) => e.manual);
     expect(link).toBeDefined();

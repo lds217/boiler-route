@@ -1,5 +1,34 @@
 {
   "$comment": "Hand-maintained campus knowledge merged at build time. Keep hand-verified additions out of the OSM data file (ODbL). manualLinks match by OSM way id (number) or exact building name; kind is 'skywalk' or 'subwalk'; verified:false shows a warning when the link is used. buildings is keyed by building name or OSM id, with {conditioned, indoorC, hours}.",
-  "manualLinks": [],
+  "manualLinks": [
+    {
+      "a": "Stewart Center",
+      "b": "Purdue Student Union",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Purdue underground tunnel system; traced from the printed diagram, not walked"
+    },
+    {
+      "a": "Purdue Student Union",
+      "b": "Union Club Hotel",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Purdue underground tunnel system; traced from the printed diagram, not walked"
+    },
+    {
+      "a": "Krannert School of Management",
+      "b": "Hawkins Hall",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Tunnel diagram routes this via Krannert Center, which OSM maps as one building with Krannert; not walked"
+    },
+    {
+      "a": "Krannert School of Management",
+      "b": "Young Hall",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Diagram shows Young Graduate House on the Krannert side of the network; assumed to be Ernest C. Young Hall, not walked"
+    }
+  ],
   "buildings": {}
 }

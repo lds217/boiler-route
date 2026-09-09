@@ -373,7 +373,9 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
     typeof x === 'number' ? buildings.find((b) => b.osmId === x) : byName[String(x).toLowerCase()];
   for (const l of overrides.manualLinks ?? []) {
     const A = find(l.a), B = find(l.b);
-    if (!A || !B) continue;
+    // a building with no usable door has no hub to link to, and a hand-edited
+    // file must never be able to crash the build
+    if (!A || !B || A === B || !nodes[A.id + ':hub'] || !nodes[B.id + ':hub']) continue;
     addEdge(A.id + ':hub', B.id + ':hub', 'link', {
       linkKind: l.kind, bldA: A.id, bldB: B.id, verified: l.verified, note: l.note, manual: true,
     });
