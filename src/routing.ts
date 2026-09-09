@@ -1,6 +1,6 @@
 import {
   CROSS_RISK_SEC, ICE_STEPS_FACTOR, ICE_TEMP_C, INDOOR_FACTOR, JAYWALK_RISK_FACTOR, NIGHT_CROSS_RISK_FACTOR,
-  NIGHT_LIT_FACTOR, ROAD_FACTOR, SEC, STEPS_FACTOR, WALK_SPEED,
+  NIGHT_LIT_FACTOR, SEC, STEPS_FACTOR, WALK_SPEED,
 } from './constants';
 import { feelsLike, INDOOR_C, rainStress, stress } from './comfort';
 import type { Edge, Model, RouteContext, RouteSummary, SunPosition, Wind } from './types';
@@ -16,7 +16,7 @@ export function edgeTime(e: Edge, ctx?: RouteContext): number {
   if (e.kind !== 'outdoor') return (e.len * INDOOR_FACTOR) / WALK_SPEED + (e.doorSec || 0);
   // Icy outdoor stairs are genuinely slower, so this belongs in the time, not the penalty.
   const ice = ctx?.icy && e.steps && !e.covered ? ICE_STEPS_FACTOR : 1;
-  return (e.len / WALK_SPEED) * (e.steps ? STEPS_FACTOR : 1) * (e.road ? ROAD_FACTOR : 1) * ice +
+  return (e.len / WALK_SPEED) * (e.steps ? STEPS_FACTOR : 1) * ice +
     (e.crossing ? CROSS_SEC[e.crossing.type] || 0 : 0);
 }
 

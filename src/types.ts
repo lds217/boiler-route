@@ -87,7 +87,6 @@ export interface Edge {
   len: number; // m (indoor lengths already include the corridor factor)
   // outdoor
   name?: string | null;
-  road?: boolean;
   steps?: boolean;
   covered?: boolean;
   connector?: boolean;

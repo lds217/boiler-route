@@ -6,7 +6,6 @@ export const BBOX: [number, number, number, number] = [40.4200, -86.9226, 40.430
 export const WALK_SPEED = 1.35; // m/s, typical campus pace
 export const INDOOR_FACTOR = 1.2; // doors, people, stairs
 export const CORRIDOR_FACTOR = 1.4; // corridors bend; straight-line indoor distance is optimistic
-export const ROAD_FACTOR = 1.15; // walking along a street with no separately mapped sidewalk
 export const STEPS_FACTOR = 1.3;
 export const MAX_SHADOW = 300; // m: caps low-sun shadow rays
 export const DOOR_SNAP = 8; // m: sidewalk this close to the wall counts as a door (untagged buildings)
@@ -70,8 +69,9 @@ export const RAIN_STRESS_MAX = 2;
 export const RAIN_SATURATION_MM = 2.5; // mm/h at which the rain penalty is at full strength
 
 /**
- * Streets a pedestrian must not cross except at a crossing. Everything else
- * (service roads, parking aisles, living streets) is treated as shared space.
+ * Street carriageways. Routes are never sent along one: they are here so a
+ * footway drawn across them can be detected as a crossing and priced. Everything
+ * else (service roads, parking aisles, living streets) is walkable shared space.
  */
 export const STREETS = new Set([
   'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'unclassified',
@@ -88,9 +88,6 @@ export const NEVER_CAMPUS_BUILDING = new Set([
   'house', 'detached', 'semidetached_house', 'bungalow', 'garage', 'garages', 'carport',
   'shed', 'hut', 'roof', 'container', 'static_caravan',
 ]);
-
-/** Streets never walked along even if they claim to be walkable. */
-export const NEVER_WALK = new Set(['motorway', 'trunk', 'motorway_link', 'trunk_link']);
 
 export const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',

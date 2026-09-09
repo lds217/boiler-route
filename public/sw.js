@@ -1,7 +1,7 @@
 /* Boiler Route service worker: cache-first for the app shell, so the campus
    works offline once visited. The OSM data bundle uses stale-while-revalidate
    so a weekly refresh lands without blocking startup. */
-const CACHE = 'boiler-route-v6';
+const CACHE = 'boiler-route-v7';
 
 /* The whole campus is ~200 KB gzipped, so pull it down on install: after one
    visit the map, buildings, heights and canopy all work with no network. */

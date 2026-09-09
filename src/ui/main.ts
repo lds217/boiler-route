@@ -2,6 +2,7 @@ import '@fontsource-variable/inter';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { hydrateIcons, icon } from './icons';
+import { fmtDist, fmtHeight, type Units } from '../units';
 import './style.css';
 
 import campusOverrides from '../../campus-overrides.json';
@@ -50,6 +51,8 @@ const sunColor = (f: number) => {
   return `rgb(${c1.map((v, i) => Math.round(lerp(v, c2[i], f))).join(',')})`;
 };
 const ll = (p: { x: number; y: number }): [number, number] => proj.ll(p);
+const units = (): Units => (($('units') as HTMLSelectElement)?.value === 'metric' ? 'metric' : 'imperial');
+const dist = (m: number) => fmtDist(m, units());
 
 /* ================= map ================= */
 // Extra canvas padding renders past the viewport so panning doesn't redraw every frame.
@@ -382,7 +385,7 @@ function setPlace(place: Place, field?: 'from' | 'to') {
   if (field === 'from') origin = place; else dest = place;
   if (place.kind === 'building' && model) {
     const b = model.byId[place.id];
-    setStatus(`<b>${esc(b.name)}</b>: ${b.doorsTagged} tagged entrance${b.doorsTagged === 1 ? '' : 's'}${b.doorsAssumed ? `, ${b.doorsAssumed} assumed` : ''}${b.doorsSkipped.length ? `, ${b.doorsSkipped.length} unusable (${[...new Set(b.doorsSkipped)].join(', ')})` : ''}; height ${Math.round(b.height)} m (${b.heightSource === 'lidar' ? 'lidar' : b.heightSource === 'osm' ? 'OSM' : 'assumed'}); hours ${fmtHours(b.hours)} ${b.hoursTagged ? '(OSM)' : '(assumed)'}.`);
+    setStatus(`<b>${esc(b.name)}</b>: ${b.doorsTagged} tagged entrance${b.doorsTagged === 1 ? '' : 's'}${b.doorsAssumed ? `, ${b.doorsAssumed} assumed` : ''}${b.doorsSkipped.length ? `, ${b.doorsSkipped.length} unusable (${[...new Set(b.doorsSkipped)].join(', ')})` : ''}; height ${fmtHeight(b.height, units())} (${b.heightSource === 'lidar' ? 'lidar' : b.heightSource === 'osm' ? 'OSM' : 'assumed'}); hours ${fmtHours(b.hours)} ${b.hoursTagged ? '(OSM)' : '(assumed)'}.`);
   }
   const inp = $<HTMLInputElement>(field);
   inp.value = place.label;
@@ -603,7 +606,7 @@ function renderNav() {
   $('navic').innerHTML = maneuverSvg(s.maneuver);
   $('navtext').textContent = s.text;
   $('navsub').textContent = `${navI + 1}/${navSteps.length}${s.sub ? ' · ' + s.sub : ''} · tap to see the turn`;
-  $('navm').textContent = `${s.m} m`;
+  $('navm').textContent = dist(s.m);
   ($('navprev') as HTMLButtonElement).disabled = navI === 0;
   ($('navnext') as HTMLButtonElement).disabled = navI === navSteps.length - 1;
   $('steps').querySelectorAll('li').forEach((li) => li.setAttribute('aria-current', String(+li.dataset.i! === navI)));
@@ -640,7 +643,7 @@ $('tabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.onclic
 /* ================= conditions ================= */
 // Dragging a slider updates the readout every frame but defers the routing pass,
 // so the thumb never waits on a recompute; releasing it recomputes at once.
-for (const id of ['date', 'tempn', 'wind', 'cloud', 'precip', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk', 'crossbld']) {
+for (const id of ['date', 'tempn', 'wind', 'cloud', 'precip', 'time', 'comfort', 'manual', 'stepfree', 'nojaywalk', 'crossbld', 'units']) {
   $(id).addEventListener('input', () => scheduleUpdate(false));
   $(id).addEventListener('change', () => scheduleUpdate(true));
 }
@@ -650,6 +653,8 @@ function applyBasemap() {
   drawBasemap();
 }
 $('basemap').addEventListener('change', applyBasemap);
+$('units').addEventListener('change', () => { try { localStorage.setItem('units', units()); } catch { /* private mode */ } });
+try { const u = localStorage.getItem('units'); if (u) ($('units') as HTMLSelectElement).value = u; } catch { /* private mode */ }
 $('shownet').addEventListener('change', (e) => {
   if ((e.target as HTMLInputElement).checked) { buildNet(); netLayer.addTo(map); } else map.removeLayer(netLayer);
 });
@@ -864,14 +869,14 @@ function renderRoutes() {
     btn.setAttribute('aria-pressed', String(shown === it.key));
     btn.innerHTML = `<span class="name">${it.label}<small style="display:block;font-weight:500;color:var(--muted);font-size:12px">arrive ${arrive}${s.crossings ? `, ${s.crossings} crossing${s.crossings > 1 ? 's' : ''}` : ''}${s.jaywalks ? `, ${s.jaywalks} unmarked` : ''}</small></span><span class="time">${fmtMin(s.time)}${extra > 0 ? `<small>+${extra} min</small>` : ''}</span>
       <span class="strip"><i class="in" style="width:${pct(s.indoorLen)}"></i><i class="sh" style="width:${pct(s.shadeLen)}"></i><i class="su" style="width:${pct(s.sunLen)}"></i></span>
-      <span class="sub"><span>${Math.round(s.len)} m, ${Math.round(s.sunLen)} m in sun${s.worst !== null ? `, ${ctx.hot ? 'hottest' : 'coldest'} stretch feels ${Math.round(cToF(s.worst))} °F` : ''}</span><span>${via.length ? 'through ' + via.join(', ') : 'outdoors the whole way'}</span></span>`;
+      <span class="sub"><span>${dist(s.len)}, ${dist(s.sunLen)} in sun${s.worst !== null ? `, ${ctx.hot ? 'hottest' : 'coldest'} stretch feels ${Math.round(cToF(s.worst))} °F` : ''}</span><span>${via.length ? 'through ' + via.join(', ') : 'outdoors the whole way'}</span></span>`;
     btn.onclick = () => { selected = it.key; renderRoutes(); };
     box.appendChild(btn);
     if (shown === it.key) {
       if (s.unverified) warn.innerHTML += '<div class="warn">This route uses an indoor link that has not been verified on foot.</div>';
       if (s.assumedDoors) warn.innerHTML += `<div class="warn">${s.assumedDoors} door${s.assumedDoors > 1 ? 's' : ''} on this route ${s.assumedDoors > 1 ? 'are' : 'is'} not mapped in OSM and ${s.assumedDoors > 1 ? 'were' : 'was'} assumed from where the sidewalk meets the wall. If one is wrong, add the real entrance to OpenStreetMap and reload.</div>`;
       if (s.jaywalks) warn.innerHTML += '<div class="warn">This route crosses a street where OSM has no crossing mapped. Tick "Only cross at crossings" to avoid it.</div>';
-      if (s.unlitLen > 60) warn.innerHTML += `<div class="warn">${Math.round(s.unlitLen)} m of this route has no street lighting mapped in OSM. Routing already prefers lit paths after dark.</div>`;
+      if (s.unlitLen > 60) warn.innerHTML += `<div class="warn">${dist(s.unlitLen)} of this route has no street lighting mapped in OSM. Routing already prefers lit paths after dark.</div>`;
       if (s.majorCrossings) warn.innerHTML += `<div class="warn">Crosses ${s.majorCrossings} main road${s.majorCrossings > 1 ? 's' : ''}. Use the signals and watch for turning traffic.</div>`;
     }
   }
@@ -890,7 +895,7 @@ function renderRoutes() {
   const steps = directions(model, shownPath, src, ctx);
   const ss = summarize(shownPath, ctx);
   setTrip(`<b>${fmtMin(ss.time)}</b> · arrive ${fmtClock((ctx.mins + Math.round(ss.time / 60)) % 1440)} · ${shown === 'fast' ? 'fastest' : 'comfortable'} route`);
-  $('steps').innerHTML = steps.map((s, i) => `<li data-i="${i}"${s.warn ? ' style="background:#FFF4E5"' : ''}><span class="mic ${s.icon}">${maneuverSvg(s.maneuver)}</span><span>${esc(s.text)}${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span><span class="m">${s.m} m</span></li>`).join('');
+  $('steps').innerHTML = steps.map((s, i) => `<li data-i="${i}"${s.warn ? ' style="background:#FFF4E5"' : ''}><span class="mic ${s.icon}">${maneuverSvg(s.maneuver)}</span><span>${esc(s.text)}${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span><span class="m">${dist(s.m)}</span></li>`).join('');
   $('steps').querySelectorAll('li').forEach((li) => (li.onclick = () => goStep(+li.dataset.i!)));
   const sameRoute = navSteps.length === steps.length && navSteps.every((s, i) => s.text === steps[i].text);
   navSteps = steps;

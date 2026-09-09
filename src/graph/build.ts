@@ -1,6 +1,6 @@
 import {
   ASSUMED_DOOR_PENALTY_FACTOR, CANOPY_MAX_M, CORRIDOR_FACTOR, CROSSING_STREET_REACH, DOOR_CONNECT, DOOR_REACH,
-  DOOR_SECTORS, DOOR_SNAP, GAP_CLOSE, NEVER_WALK, SEC, STREETS, WALKWAYS,
+  DOOR_SECTORS, DOOR_SNAP, GAP_CLOSE, SEC, STREETS, WALKWAYS,
 } from '../constants';
 import {
   bearingDeg, closestOnRing, compass8, dist, distToRing, pointInRing, segIntersects, type Projection,
@@ -155,10 +155,10 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
           na: pts[i].id, nb: pts[i + 1].id,
           name: t.name || hw.replace('_', ' '), klass: hw, osmWay: +idStr,
         });
-      // Streets are only walked along when they probably have an unmapped sidewalk.
-      const sw = t.sidewalk || t['sidewalk:both'] || '';
-      if (['separate', 'no', 'none'].includes(sw) || t['sidewalk:left'] === 'separate' || t['sidewalk:right'] === 'separate') continue;
-      if (!walkableTags(t) || NEVER_WALK.has(hw)) continue;
+      // A street carriageway is never walked along: routes use footways, paths,
+      // steps, pedestrian ways and mapped crossings only. Streets are kept here
+      // solely to detect crossings and price the risk of stepping into one.
+      continue;
     } else if (!WALKWAYS.has(hw) || !walkableTags(t)) continue;
 
     let kind: EdgeKind = 'outdoor';
@@ -167,7 +167,6 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
     else if (hw === 'corridor' || t.indoor === 'yes' || t.indoor === 'corridor') kind = 'indoor';
     else if (t.bridge && t.bridge !== 'no' && (t.covered === 'yes' || t.indoor)) { kind = 'link'; linkKind = 'skywalk'; }
     const covered = t.covered === 'yes' || t.tunnel === 'building_passage';
-    const road = STREETS.has(hw);
     const lit = t.lit === 'yes' || t.lit === '24/7' ? true : t.lit === 'no' ? false : null;
     const isCrossingWay = t.footway === 'crossing' || t.path === 'crossing' || t.cycleway === 'crossing' || !!t.crossing;
     const name = t.name || null;
@@ -190,14 +189,14 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
       }
       if (k === 'indoor' && !bld) k = 'link';
       let crossing: Crossing | null = null;
-      if (k === 'outdoor' && !road) {
+      if (k === 'outdoor') {
         const cn = [a, b].map((n) => (n.tags && n.tags.highway === 'crossing' ? n.tags : null)).find(Boolean);
         const ct = (cn && cn.crossing) || t.crossing || null;
         if (cn || isCrossingWay) crossing = { type: ct === 'traffic_signals' ? 'signal' : ct === 'unmarked' ? 'plain' : 'marked' };
       }
       addEdge('n' + a.id, 'n' + b.id, k, {
         bld, linkKind: k === 'link' ? linkKind || 'corridor' : null,
-        covered: cov, road, name, lit, osmWay: +idStr, steps: hw === 'steps', crossing,
+        covered: cov, name, lit, osmWay: +idStr, steps: hw === 'steps', crossing,
       });
     }
   }
@@ -208,7 +207,7 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
   // Keep it, price it heavily, name it.
   let jaywalks = 0;
   for (const e of edges) {
-    if (e.kind !== 'outdoor' || e.crossing || e.road) continue;
+    if (e.kind !== 'outdoor' || e.crossing) continue;
     const ids = new Set([+e.a.slice(1), +e.b.slice(1)]);
     const s = sIndex.crossed(nodes[e.a], nodes[e.b], ids);
     if (s) { e.crossing = { type: 'jaywalk', street: s.name, klass: s.klass }; jaywalks++; }

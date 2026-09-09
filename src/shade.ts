@@ -5,8 +5,42 @@ import type { Model, SunPosition, XY } from './types';
 export interface ShadeResult {
   /** Per-edge fraction of samples in direct sun, indexed by edge id. */
   sunFrac: Float32Array;
-  /** Drawable shadow polygons (convex hulls; overestimate for concave footprints). */
+  /** Drawable shadow pieces. Overlapping pieces are meant to be filled as one
+   *  path with the nonzero rule, which unions them. */
   shadows: XY[][];
+}
+
+/** A ring turns the same way at every corner only if it is convex. */
+function isConvex(r: XY[]): boolean {
+  let sign = 0;
+  for (let i = 0, n = r.length; i < n; i++) {
+    const a = r[i], b = r[(i + 1) % n], c = r[(i + 2) % n];
+    const cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+    if (Math.abs(cr) < 1e-9) continue;
+    const s = cr > 0 ? 1 : -1;
+    if (sign === 0) sign = s;
+    else if (s !== sign) return false;
+  }
+  return true;
+}
+
+/**
+ * The ground a caster shades is its footprint swept along the sun-opposite
+ * vector. For a convex footprint that sweep is exactly the hull of the shape and
+ * its translated copy, so those stay one ring. A concave footprint must be
+ * emitted in pieces -- the shape, its copy, and one quad per wall -- because a
+ * hull would fill in the courtyards and notches that are actually in full sun,
+ * and 81% of the footprints here are concave.
+ */
+function shadowPieces(ring: XY[], dx: number, dy: number): XY[][] {
+  const moved = ring.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+  if (isConvex(ring)) return [hull(ring.concat(moved))];
+  const out: XY[][] = [ring, moved];
+  for (let i = 0, n = ring.length; i < n; i++) {
+    const a = ring[i], b = ring[(i + 1) % n];
+    out.push([a, b, { x: b.x + dx, y: b.y + dy }, { x: a.x + dx, y: a.y + dy }]);
+  }
+  return out;
 }
 
 /**
@@ -65,7 +99,6 @@ export function computeShade(model: Model, sun: SunPosition): ShadeResult {
     sunFrac[e.id] = sunny / 5;
   }
 
-  const shadows = casters.map(({ s, L }) =>
-    hull(s.ring.concat(s.ring.map((c) => ({ x: c.x - u.x * L, y: c.y - u.y * L })))));
+  const shadows = casters.flatMap(({ s, L }) => shadowPieces(s.ring, -u.x * L, -u.y * L));
   return { sunFrac, shadows };
 }
