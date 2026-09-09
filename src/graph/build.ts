@@ -1,5 +1,6 @@
 import {
-  ASSUMED_DOOR_PENALTY_FACTOR, CANOPY_MAX_M, CORRIDOR_FACTOR, CROSSING_STREET_REACH, DOOR_CONNECT, DOOR_REACH,
+  ASSUMED_DOOR_PENALTY_FACTOR, CANOPY_MAX_M, CORRIDOR_FACTOR, CROSSING_MAX_LEN, CROSSING_STREET_REACH,
+  DOOR_CONNECT, DOOR_REACH,
   DOOR_SECTORS, DOOR_SNAP, GAP_CLOSE, SEC, STREETS, WALKWAYS,
 } from '../constants';
 import {
@@ -216,13 +217,17 @@ export function buildModel(osm: OsmData, proj: Projection, opts: BuildOptions): 
     const n = +String(id).slice(1);
     return streets.find((s) => s.na === n || s.nb === n);
   };
-  for (const e of edges)
-    if (e.crossing && !e.crossing.street) {
-      const mid = { x: (nodes[e.a].x + nodes[e.b].x) / 2, y: (nodes[e.a].y + nodes[e.b].y) / 2 };
-      const s = sIndex.crossed(nodes[e.a], nodes[e.b], null) || streetAtNode(e.a) || streetAtNode(e.b)
-        || sIndex.nearest(mid, CROSSING_STREET_REACH);
-      if (s) { e.crossing.street = s.name; e.crossing.klass = s.klass; }
-    }
+  for (const e of edges) {
+    if (!e.crossing) continue;
+    const crossed = sIndex.crossed(nodes[e.a], nodes[e.b], null);
+    // A crossing node marks a point, not a whole way: an edge that only touches
+    // one and never reaches the carriageway is just a footway leading up to it.
+    if (!crossed && e.len > CROSSING_MAX_LEN) { e.crossing = null; continue; }
+    if (e.crossing.street) continue;
+    const mid = { x: (nodes[e.a].x + nodes[e.b].x) / 2, y: (nodes[e.a].y + nodes[e.b].y) / 2 };
+    const s = crossed || streetAtNode(e.a) || streetAtNode(e.b) || sIndex.nearest(mid, CROSSING_STREET_REACH);
+    if (s) { e.crossing.street = s.name; e.crossing.klass = s.klass; }
+  }
 
   // ---- close small gaps, never across a street ----
   const cell = 10, grid = new Map<string, GraphNode[]>();

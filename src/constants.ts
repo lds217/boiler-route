@@ -53,6 +53,9 @@ export const CROSS_RISK_SEC: Record<string, number> = {
 };
 /** How far from a crossing edge to look for the street it crosses, when no segment intersects it. */
 export const CROSSING_STREET_REACH = 15; // m
+/** A crossing is kerb to kerb. Anything longer that merely touches a crossing
+ *  node is an ordinary footway and must not be charged crossing time or risk. */
+export const CROSSING_MAX_LEN = 25; // m
 /** Crossing away from a marked crossing multiplies that risk. */
 export const JAYWALK_RISK_FACTOR = 3;
 /** Unlit crossings are worse again after dark. */

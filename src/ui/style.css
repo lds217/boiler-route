@@ -200,6 +200,13 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
 #search.mini .brandline,#search.mini .fields,#search.mini .quick{display:none}
 #search.mini #minibar{display:flex}
 
+.cnt{margin-left:auto;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.lysep{margin:12px 0 2px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-top:1px solid var(--line);padding-top:10px}
+#lyLegend{display:block;margin-top:8px}
+#lyLegend div{display:flex;align-items:center;gap:7px;margin:3px 0}
+#lyLegend i{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
+
 /* the tunnel or skywalk badge sitting on that stretch of the route */
 .tbadge{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
   background:var(--panel);color:#6F5A2E;border:2px solid #6F5A2E;box-shadow:0 1px 4px rgba(0,0,0,.3)}

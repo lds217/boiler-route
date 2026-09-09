@@ -19,8 +19,13 @@ export interface OsmIndex {
 export function indexOsm(osm: OsmData): OsmIndex {
   const nodes: Record<number, OsmNode> = {}, ways: Record<number, OsmWay> = {}, relations: OsmRelation[] = [];
   for (const el of osm.elements) {
-    if (el.type === 'node') nodes[el.id] = el;
-    else if (el.type === 'way') ways[el.id] = el;
+    if (el.type === 'node') {
+      // Overpass returns a node twice when it matches a query and is also pulled
+      // in as a way member: once with tags, once as a bare skeleton. Keeping the
+      // last copy silently threw away every entrance and crossing tag.
+      const prev = nodes[el.id];
+      nodes[el.id] = prev?.tags && !el.tags ? prev : prev?.tags && el.tags ? { ...el, tags: { ...prev.tags, ...el.tags } } : el;
+    } else if (el.type === 'way') ways[el.id] = el;
     else relations.push(el);
   }
   return { nodes, ways, relations };

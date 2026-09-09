@@ -50,7 +50,8 @@
   <div id="planner" hidden>
     <div class="seg" id="tabs" role="tablist">
       <button type="button" data-tab="route" aria-selected="true">Route</button>
-      <button type="button" data-tab="cond" aria-selected="false">Conditions</button>
+      <button type="button" data-tab="cond" aria-selected="false">Weather</button>
+      <button type="button" data-tab="layers" aria-selected="false">Layers</button>
       <button type="button" data-tab="data" aria-selected="false">Data</button>
     </div>
 
@@ -90,7 +91,23 @@
         <div class="field"><label for="units">Units</label><select id="units"><option value="imperial" selected>Feet and miles</option><option value="metric">Metres and kilometres</option></select></div>
         <div class="field"><label for="basemap">Basemap</label><select id="basemap"><option value="tiles" selected>OSM tiles</option><option value="builtin">Built-in (works offline)</option><option value="none">None</option></select></div>
       </div>
-      <label class="toggle"><input type="checkbox" id="shownet"> Show the walkable network</label>
+    </div>
+
+    <div class="tabp" id="tab-layers" hidden>
+      <p class="tabnote">Turn each layer on or off to check what the map is built from. Counts are what is currently drawn.</p>
+      <label class="toggle"><input type="checkbox" id="lyBld" checked> Buildings <span class="cnt" id="cBld"></span></label>
+      <label class="toggle"><input type="checkbox" id="lyLabel" checked> Building codes</label>
+      <label class="toggle"><input type="checkbox" id="lyTree" checked> Tree canopy <span class="cnt" id="cTree"></span></label>
+      <label class="toggle"><input type="checkbox" id="lyShadow" checked> Shadows</label>
+      <label class="toggle"><input type="checkbox" id="lyTunnel" checked> Tunnels and skywalks <span class="cnt" id="cTunnel"></span></label>
+      <label class="toggle"><input type="checkbox" id="lyStreet" checked> Street names</label>
+      <label class="toggle"><input type="checkbox" id="lyBounds" checked> Study area edge</label>
+      <div class="lysep">Checking the data</div>
+      <label class="toggle"><input type="checkbox" id="shownet"> Walkable network <span class="cnt" id="cNet"></span></label>
+      <label class="toggle"><input type="checkbox" id="lyDoor"> Doors, tagged vs assumed <span class="cnt" id="cDoor"></span></label>
+      <label class="toggle"><input type="checkbox" id="lyCross"> Crossings by type <span class="cnt" id="cCross"></span></label>
+      <label class="toggle"><input type="checkbox" id="lyHeights"> Colour buildings by height source</label>
+      <div class="legend" id="lyLegend" hidden></div>
     </div>
 
     <div class="tabp" id="tab-data" hidden>
@@ -100,6 +117,7 @@
         <li><b>Open-Meteo, live:</b> temperature, wind, cloud cover and precipitation for the chosen date and hour. Cloud cover reduces the sun term; rain adds discomfort wherever there is no cover.</li>
         <li><b>Computed:</b> sun position, shadows from building and tree heights, feels-like temperature per segment, comfort-weighted routing, open-hours blocking, turn-by-turn directions.</li>
         <li><b>Comfort model:</b> walking time × (1 + slider × stress), where stress follows the UTCI thermal-stress bands of the segment's feels-like temperature. Direct sun adds up to 10 °C at high sun. Indoors counts as 22 °C. Sources in the source comments.</li>
+        <li><b>Layers tab:</b> every drawn thing can be switched on or off, with counts, so the data can be checked. Doors show tagged (blue) against assumed (amber), crossings are coloured by type, and buildings can be recoloured by where their height came from.</li>
         <li><b>Doors:</b> OSM entrances are used with their meaning: main and secondary entrances preferred, service doors penalised, exit-only and entrance-only doors are one-way, emergency exits and private doors are never used, wheelchair=no doors are skipped in step-free mode. Buildings with fewer than two usable tagged entrances get assumed doors where sidewalks meet the wall, flagged in the directions.</li>
         <li><b>Safety, always on:</b> these apply even at the Fastest setting. After dark, paths OSM tags <b>lit=yes</b> are preferred and <b>lit=no</b> costs most, with untagged paths in between. Stepping into a street costs seconds-equivalent by what is crossed, from about 4 s for a residential street to 50 s for a primary road, tripled when there is no crossing and raised again at night. At or below freezing, outdoor stairs are treated as slower.</li>
         <li><b>Streets:</b> routes never travel along a street carriageway at all: only footways, paths, pedestrian ways, steps, service drives and mapped crossings. Streets are still read, so a footway drawn across one is detected as a crossing and priced by what it crosses. Footways crossing a street with no crossing node are flagged as unmarked and excluded by default.</li>

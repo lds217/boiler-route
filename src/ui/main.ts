@@ -74,7 +74,7 @@ const syncLabels = () => {
   const z = map.getZoom();
   syncBuildingLabels();
   // street names only once there is room for them
-  if (z >= 17) labelLayer.addTo(map); else map.removeLayer(labelLayer);
+  if (wantStreetNames && z >= 17) labelLayer.addTo(map); else map.removeLayer(labelLayer);
 };
 map.on('zoomend', () => { syncLabels(); applyLineWeights(); });
 map.createPane('ground').style.zIndex = '330';
@@ -103,17 +103,55 @@ const netLayer = L.layerGroup();
 const routeLayer = L.layerGroup().addTo(map);
 const bldLayer = L.layerGroup().addTo(map);
 const pinLayer = L.layerGroup().addTo(map);
-L.rectangle([[BBOX[0], BBOX[1]], [BBOX[2], BBOX[3]]], { color: '#555960', weight: 1, dashArray: '4 6', fill: false, interactive: false }).addTo(map);
+const boundsRect = L.rectangle([[BBOX[0], BBOX[1]], [BBOX[2], BBOX[3]]], { color: '#555960', weight: 1, dashArray: '4 6', fill: false, interactive: false }).addTo(map);
 const bldShapes: Record<string, L.Polygon> = {};
 const treeLayer = L.layerGroup().addTo(map);
 const tunnelLayer = L.layerGroup().addTo(map);
+const doorLayer = L.layerGroup();
+const crossLayer = L.layerGroup();
+/** Layer switches, so every drawn thing can be checked on its own. */
+const DOOR_COLOR = { tagged: '#1F5FBF', assumed: '#C77B1F', inside: '#2E7D32' };
+const CROSS_COLOR: Record<string, string> = { signal: '#1F5FBF', marked: '#2E7D32', plain: '#C77B1F', jaywalk: '#B3352C' };
+const HEIGHT_COLOR: Record<string, string> = { lidar: '#CBB98A', osm: '#B9C4CF', assumed: '#E6E2D6' };
+let wantBldLabels = true, wantStreetNames = true, reviewHeights = false;
+let doorsBuilt = false, crossBuilt = false;
+function buildDoors() {
+  if (doorsBuilt || !model) return;
+  doorsBuilt = true;
+  for (const [bid, doors] of model.doorsOf) {
+    const b = model.byId[bid];
+    for (const [nid, d] of doors) {
+      const n = model.nodes[nid];
+      if (!n) continue;
+      const kind = d.inside ? 'inside' : d.tagged ? 'tagged' : 'assumed';
+      L.circleMarker(ll(n), {
+        pane: 'net', radius: 4, weight: 2, color: DOOR_COLOR[kind],
+        fillColor: d.tagged ? DOOR_COLOR[kind] : '#FCFBF7', fillOpacity: 1,
+      }).addTo(doorLayer).bindTooltip(
+        `${b.abbr}: ${kind} ${d.label}${d.side ? ', ' + d.side + ' side' : ''}${d.enter && d.exit ? '' : d.enter ? ', entry only' : ', exit only'}`,
+        { className: 'st' });
+    }
+  }
+}
+function buildCrossings() {
+  if (crossBuilt || !model) return;
+  crossBuilt = true;
+  for (const e of model.edges) {
+    if (!e.crossing) continue;
+    L.polyline([ll(model.nodes[e.a]), ll(model.nodes[e.b])], {
+      pane: 'net', color: CROSS_COLOR[e.crossing.type] ?? '#B3352C', weight: 5, opacity: 0.85, lineCap: 'round',
+    }).addTo(crossLayer).bindTooltip(
+      `${e.crossing.type} crossing of ${e.crossing.street ?? 'an unnamed street'}${e.crossing.klass ? ` (${e.crossing.klass})` : ''}`,
+      { className: 'st' });
+  }
+}
 /** Permanent tooltips are DOM nodes Leaflet repositions on every move, so they
     are bound only at the zooms that show them. */
 let namedPolys: { poly: L.Polygon; abbr: string; id: string }[] = [];
 let labelsBound = false;
 let lastOpen: Record<string, boolean> = {};
 function syncBuildingLabels() {
-  const want = map.getZoom() >= 16;
+  const want = wantBldLabels && map.getZoom() >= 16;
   if (want === labelsBound) return;
   labelsBound = want;
   for (const { poly, abbr, id } of namedPolys) {
@@ -214,6 +252,7 @@ function multiRings(rings: XY[][]): [number, number][][][] {
 function drawModel() {
   if (!model) return;
   bldLayer.clearLayers(); treeLayer.clearLayers(); tunnelLayer.clearLayers(); netLayer.clearLayers();
+  doorLayer.clearLayers(); crossLayer.clearLayers(); doorsBuilt = false; crossBuilt = false;
   netBuilt = false; namedPolys = []; labelsBound = false;
   for (const b of model.buildings) {
     // Off-campus buildings are scenery: muted, unlabeled, clicks fall through to the map.
@@ -706,7 +745,7 @@ $('navlist').onclick = () => {
 /* ================= sheet tabs ================= */
 $('tabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.onclick = () => {
   for (const o of $('tabs').querySelectorAll('button')) o.setAttribute('aria-selected', String(o === b));
-  for (const t of ['route', 'cond', 'data']) ($('tab-' + t) as HTMLElement).hidden = t !== b.dataset.tab;
+  for (const t of ['route', 'cond', 'layers', 'data']) ($('tab-' + t) as HTMLElement).hidden = t !== b.dataset.tab;
   if (isMobile() && sheetPos === 'peek') setSheet('half');
 }));
 
@@ -725,9 +764,57 @@ function applyBasemap() {
 $('basemap').addEventListener('change', applyBasemap);
 $('units').addEventListener('change', () => { try { localStorage.setItem('units', units()); } catch { /* private mode */ } });
 try { const u = localStorage.getItem('units'); if (u) ($('units') as HTMLSelectElement).value = u; } catch { /* private mode */ }
-$('shownet').addEventListener('change', (e) => {
-  if ((e.target as HTMLInputElement).checked) { buildNet(); netLayer.addTo(map); } else map.removeLayer(netLayer);
-});
+/* ================= layer switches ================= */
+const LAYER_LEGEND: Record<string, [string, string][]> = {
+  lyDoor: [['#1F5FBF', 'tagged in OSM'], ['#C77B1F', 'assumed from the walls'], ['#2E7D32', 'inside corridor']],
+  lyCross: [['#1F5FBF', 'signal'], ['#2E7D32', 'marked'], ['#C77B1F', 'unmarked'], ['#B3352C', 'no crossing mapped']],
+  lyHeights: [['#CBB98A', 'lidar'], ['#B9C4CF', 'OSM height tag'], ['#E6E2D6', 'assumed']],
+};
+function syncLayerLegend() {
+  const on = Object.keys(LAYER_LEGEND).filter((id) => ($(id) as HTMLInputElement)?.checked);
+  const box = $('lyLegend');
+  box.hidden = !on.length;
+  box.innerHTML = on.flatMap((id) => LAYER_LEGEND[id].map(([c, t]) => `<div><i style="background:${c}"></i>${t}</div>`)).join('');
+}
+/** A switch either toggles a map layer or flips a flag and redraws. */
+const LAYERS: Record<string, (on: boolean) => void> = {
+  lyBld: (on) => (on ? bldLayer.addTo(map) : map.removeLayer(bldLayer)),
+  lyLabel: (on) => { wantBldLabels = on; labelsBound = !on; syncBuildingLabels(); },
+  lyTree: (on) => (on ? treeLayer.addTo(map) : map.removeLayer(treeLayer)),
+  lyShadow: (on) => (on ? shadowLayer.addTo(map) : map.removeLayer(shadowLayer)),
+  lyTunnel: (on) => (on ? tunnelLayer.addTo(map) : map.removeLayer(tunnelLayer)),
+  lyStreet: (on) => { wantStreetNames = on; syncLabels(); },
+  lyBounds: (on) => (on ? boundsRect.addTo(map) : map.removeLayer(boundsRect)),
+  shownet: (on) => { if (on) { buildNet(); netLayer.addTo(map); } else map.removeLayer(netLayer); },
+  lyDoor: (on) => { if (on) { buildDoors(); doorLayer.addTo(map); } else map.removeLayer(doorLayer); },
+  lyCross: (on) => { if (on) { buildCrossings(); crossLayer.addTo(map); } else map.removeLayer(crossLayer); },
+  lyHeights: (on) => { reviewHeights = on; openKey = ''; update(); },
+};
+for (const id of Object.keys(LAYERS)) {
+  const box = $(id) as HTMLInputElement;
+  box.addEventListener('change', () => {
+    LAYERS[id](box.checked);
+    syncLayerLegend();
+    try { localStorage.setItem('ly:' + id, box.checked ? '1' : '0'); } catch { /* private mode */ }
+  });
+  try {
+    const saved = localStorage.getItem('ly:' + id);
+    if (saved !== null) box.checked = saved === '1';
+  } catch { /* private mode */ }
+}
+/** Apply the saved switches, and show how much each layer is drawing. */
+function applyLayers() {
+  for (const id of Object.keys(LAYERS)) LAYERS[id](($(id) as HTMLInputElement).checked);
+  syncLayerLegend();
+  if (!model) return;
+  const set = (id: string, n: number) => ($(id).textContent = String(n));
+  set('cBld', model.buildings.length);
+  set('cTree', model.trees.length);
+  set('cTunnel', model.edges.filter((e) => e.kind === 'link' && (e.linkKind === 'subwalk' || e.linkKind === 'skywalk')).length);
+  set('cNet', model.edges.length);
+  set('cDoor', [...model.doorsOf.values()].reduce((n, d) => n + d.size, 0));
+  set('cCross', model.edges.filter((e) => e.crossing).length);
+}
 function nearestOption(sel: HTMLSelectElement, v: number) {
   let best: string | null = null, bd = 1e9;
   for (const o of sel.options) { const d = Math.abs(+o.value - v); if (d < bd) { bd = d; best = o.value; } }
@@ -841,7 +928,9 @@ function update() {
     lastOpen = open;
     for (const b of model.buildings) {
       if (!b.campus) continue; // scenery keeps its muted style
-      bldShapes[b.id]?.setStyle({ fillColor: open[b.id] ? '#E0D6BE' : '#E9E5D9', dashArray: open[b.id] ? undefined : '3 3' });
+      bldShapes[b.id]?.setStyle(reviewHeights
+        ? { fillColor: HEIGHT_COLOR[b.heightSource], dashArray: undefined }
+        : { fillColor: open[b.id] ? '#E0D6BE' : '#E9E5D9', dashArray: open[b.id] ? undefined : '3 3' });
       const tipEl = bldShapes[b.id]?.getTooltip()?.getElement();
       tipEl?.classList.toggle('closed', !open[b.id]);
     }
@@ -1019,7 +1108,7 @@ function start(osm: OsmData, sourceNote?: string) {
   if (named.length < 2) { showError(new Error('fewer than two named campus buildings in this block')); return; }
   // a new model invalidates everything keyed to the old one
   shadeCache = null; shadowKey = ''; openKey = '';
-  applyBasemap(); drawModel(); routeLayer.clearLayers();
+  applyBasemap(); drawModel(); routeLayer.clearLayers(); applyLayers();
   const links = model.edges.filter((e) => e.kind === 'link').length;
   const lidarN = heights ? model.buildings.filter((b) => b.heightSource === 'lidar').length : 0;
   const src = sourceNote ?? (osm._source ? `from ${osm._source} in ${osm._seconds} s` : 'from the bundled extract');
