@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { hydrateIcons, icon } from './icons';
 import { fmtDist, fmtHeight, type Units } from '../units';
+import { orderedLegs, progressOn, remainingRuns, remainingTime, stepDistances, type Leg } from '../progress';
 import './style.css';
 
 import campusOverrides from '../../campus-overrides.json';
@@ -15,7 +16,7 @@ import { compassShort, createProjection } from '../geometry';
 import { buildModel, nearestPathNode } from '../graph/build';
 import { computeOpen, fmtClock, fmtHours } from '../hours';
 import { loadBundledData, loadOverpass } from '../overpass';
-import { buildContext, dijkstra, summarize } from '../routing';
+import { buildContext, dijkstra, edgeTime, summarize } from '../routing';
 import { computeShade } from '../shade';
 import { sunPosition } from '../sun';
 import type { CampusOverrides, Edge, HeightsData, Model, OsmData, Place, RouteContext, Wind, XY } from '../types';
@@ -41,6 +42,17 @@ let selected: 'fast' | 'comfort' = 'comfort';
 let lastRoutes: { fast: Edge[] | null; comfy: Edge[] | null; ctx: RouteContext; src: string } | null = null;
 let lastPair = '';
 let raf: number | null = null;
+/* Live following: how far along the shown route you are, so the walked part can
+   be dropped and the banner can keep up. Engages only when a fix is actually
+   near the route, so looking at a route from elsewhere changes nothing. */
+const FOLLOW_M = 40;      // within this of the route, you are walking it
+const REROUTE_M = 45;     // beyond this, you have left it
+const REROUTE_FIXES = 3;  // consecutive fixes before we redo the route
+let shownLegs: Leg[] = [];
+let stepAlong: number[] = [];
+let doneAlong = 0;
+let offFixes = 0;
+let following = false;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 const esc = (s: unknown): string => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -408,6 +420,47 @@ let watchId: number | null = null;
 let locDot: L.CircleMarker | null = null;
 let locRing: L.Circle | null = null;
 let lastFix: { lat: number; lon: number } | null = null;
+/**
+ * Advance along the route as the fix moves: drop what has been walked, move the
+ * banner to the step you are on, and count the route down instead of up. If the
+ * fix leaves the route for several fixes in a row, route again from where you
+ * actually are, which is what walking past a turn should do.
+ */
+function followFix(lat: number, lon: number) {
+  if (!model || !lastRoutes || !shownLegs.length) return;
+  const p = proj.xy(lat, lon);
+  const pr = progressOn(shownLegs, p);
+  if (!pr) return;
+
+  if (pr.off > REROUTE_M) {
+    // only reroute for someone who was actually walking this route
+    if (!following) return;
+    if (++offFixes < REROUTE_FIXES) return;
+    offFixes = 0; following = false; doneAlong = 0;
+    const near = pointAt({ lat, lng: lon });
+    if (!near) { toast('You are off the route and away from any mapped path.'); return; }
+    toast('Off the route — finding a new one from where you are.');
+    near.label = 'My location';
+    setPlace(near, 'from');
+    return;
+  }
+  offFixes = 0;
+  if (pr.off > FOLLOW_M) return;   // near enough to show, not near enough to follow
+  following = true;
+  // never walk the route backwards on a noisy fix
+  if (pr.along <= doneAlong) return;
+  doneAlong = pr.along;
+
+  paintRoute(lastRoutes.ctx, null);
+  // the current step is the last turn you have passed
+  let i = 0;
+  while (i + 1 < stepAlong.length && stepAlong[i + 1] <= doneAlong + 1) i++;
+  if (i !== navI) { navI = i; renderNav(); }
+  const left = remainingTime(shownLegs, doneAlong, (e) => edgeTime(e, lastRoutes!.ctx));
+  const arrive = fmtClock((lastRoutes.ctx.mins + Math.round(left / 60)) % 1440);
+  setTrip(`<b>${fmtMin(left)} left</b> · ${dist(pr.total - doneAlong)} · arrive ${arrive}`);
+}
+
 function showFix(lat: number, lon: number, acc: number) {
   lastFix = { lat, lon };
   try { localStorage.setItem('geoOk', '1'); } catch { /* private mode */ }
@@ -418,6 +471,7 @@ function showFix(lat: number, lon: number, acc: number) {
     locDot.setLatLng([lat, lon]);
     locRing!.setLatLng([lat, lon]).setRadius(acc);
   }
+  followFix(lat, lon);
 }
 function startWatch() {
   if (watchId !== null || !navigator.geolocation || !window.isSecureContext) return;
@@ -803,8 +857,10 @@ function update() {
     ctx: { ...ctx, w }, src,
   };
   renderRoutes();
+  // a new pair is a new walk: nothing is behind you yet
   const pair = src + '>' + dst;
   if (pair !== lastPair) {
+    doneAlong = 0; offFixes = 0; following = false;
     lastPair = pair;
     fitRoute();
     // on phones, drop the sheet to a peek and shrink the search card so the route is visible
@@ -824,6 +880,23 @@ function fitRoute() {
     maxZoom: 18,
   });
 }
+/** Draws the alternative faintly and the shown route from where you are on. */
+function paintRoute(ctx: RouteContext, alt: Edge[] | null) {
+  if (!model) return;
+  routeLayer.clearLayers();
+  if (alt)
+    for (const e of alt) {
+      const A = ll(model.nodes[e.a]), B = ll(model.nodes[e.b]);
+      L.polyline([A, B], { pane: 'routes', color: '#555960', weight: 2, opacity: 0.35, dashArray: '2 6' }).addTo(routeLayer);
+    }
+  for (const run of remainingRuns(shownLegs, doneAlong)) {
+    const A = ll(run.a), B = ll(run.b);
+    const color = run.e.kind === 'outdoor' ? sunColor(ctx.sunFrac[run.e.id]) : '#8E6F3E';
+    L.polyline([A, B], { pane: 'routes', color: '#FCFBF7', weight: 9, opacity: 0.9 }).addTo(routeLayer);
+    L.polyline([A, B], { pane: 'routes', color, weight: 5, opacity: 1, dashArray: run.e.kind === 'outdoor' ? undefined : '1 8', lineCap: 'round' }).addTo(routeLayer);
+  }
+}
+
 function renderRoutes() {
   if (!lastRoutes || !model || !origin || !dest) return;
   const { fast, comfy, ctx, src } = lastRoutes;
@@ -881,19 +954,18 @@ function renderRoutes() {
       if (s.majorCrossings) warn.innerHTML += `<div class="warn">Crosses ${s.majorCrossings} main road${s.majorCrossings > 1 ? 's' : ''}. Use the signals and watch for turning traffic.</div>`;
     }
   }
-  const draw = (path: Edge[], hi: boolean) => {
-    for (const e of path) {
-      const A = ll(model!.nodes[e.a]), B = ll(model!.nodes[e.b]);
-      if (!hi) { L.polyline([A, B], { pane: 'routes', color: '#555960', weight: 2, opacity: 0.35, dashArray: '2 6' }).addTo(routeLayer); continue; }
-      const color = e.kind === 'outdoor' ? sunColor(ctx.sunFrac[e.id]) : '#8E6F3E';
-      L.polyline([A, B], { pane: 'routes', color: '#FCFBF7', weight: 9, opacity: 0.9 }).addTo(routeLayer);
-      L.polyline([A, B], { pane: 'routes', color, weight: 5, opacity: 1, dashArray: e.kind === 'outdoor' ? undefined : '1 8', lineCap: 'round' }).addTo(routeLayer);
-    }
-  };
   const shownPath = (shown === 'fast' ? fast : comfy)!;
-  if (!same && comfy) draw(shown === 'fast' ? comfy : fast, false);
-  draw(shownPath, true);
+  shownLegs = orderedLegs(model, shownPath, src);
+  // the route may have just been rebuilt under us (a slider move, or switching to
+  // the other option), so re-measure progress against the new line rather than
+  // carrying a distance that belonged to the old one
+  if (lastFix) {
+    const pr = progressOn(shownLegs, proj.xy(lastFix.lat, lastFix.lon));
+    doneAlong = pr && pr.off <= FOLLOW_M ? pr.along : 0;
+  }
+  paintRoute(ctx, !same && comfy ? (shown === 'fast' ? comfy : fast) : null);
   const steps = directions(model, shownPath, src, ctx);
+  stepAlong = stepDistances(shownLegs, steps.map((st) => st.at));
   const ss = summarize(shownPath, ctx);
   setTrip(`<b>${fmtMin(ss.time)}</b> · arrive ${fmtClock((ctx.mins + Math.round(ss.time / 60)) % 1440)} · ${shown === 'fast' ? 'fastest' : 'comfortable'} route`);
   $('steps').innerHTML = steps.map((s, i) => `<li data-i="${i}"${s.warn ? ' style="background:#FFF4E5"' : ''}><span class="mic ${s.icon}">${maneuverSvg(s.maneuver)}</span><span>${esc(s.text)}${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span><span class="m">${dist(s.m)}</span></li>`).join('');
