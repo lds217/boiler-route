@@ -63,6 +63,10 @@ const sunColor = (f: number) => {
   return `rgb(${c1.map((v, i) => Math.round(lerp(v, c2[i], f))).join(',')})`;
 };
 const ll = (p: { x: number; y: number }): [number, number] => proj.ll(p);
+const todayISO = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 const units = (): Units => (($('units') as HTMLSelectElement)?.value === 'metric' ? 'metric' : 'imperial');
 const dist = (m: number) => fmtDist(m, units());
 
@@ -350,6 +354,15 @@ function setStatus(msg: string) {
   if (model) toast(msg);
   else $('loadbox').innerHTML = `<p class="status">${msg}</p>`;
 }
+/** The data arrived but rendering it threw: say so, rather than blaming Overpass. */
+function showFatal(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  $('loadbox').innerHTML = `<div class="err"><b>The map data loaded, but drawing it failed.</b><br><small>${esc(message)}</small><br><br>
+  This is a bug in the app rather than a problem with the data. Reloading may clear it.
+  <div class="btnrow"><button class="btn" id="reloadbtn">Reload</button></div></div>`;
+  $('reloadbtn').onclick = () => location.reload();
+}
+
 function showError(err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   $('loadbox').innerHTML = `<div class="err"><b>Could not load OpenStreetMap data.</b><br><small>${esc(message)}</small><br><br>
@@ -890,8 +903,9 @@ function update() {
   const cond = conditions();
   const tempF = cond.tempF;
   updateLabels();
-  const dateStr = ($('date') as HTMLInputElement).value;
+  const dateStr = ($('date') as HTMLInputElement).value || todayISO();
   const date = new Date(dateStr + 'T00:00:00');
+  if (Number.isNaN(date.getTime())) return; // half-typed date: wait for a real one
   date.setMinutes(mins);
   const shadeKey = `${dateStr}|${mins}`;
   const { sun, sunFrac, shadows } = shadeAt(date, shadeKey);
@@ -1108,7 +1122,7 @@ function start(osm: OsmData, sourceNote?: string) {
   if (named.length < 2) { showError(new Error('fewer than two named campus buildings in this block')); return; }
   // a new model invalidates everything keyed to the old one
   shadeCache = null; shadowKey = ''; openKey = '';
-  applyBasemap(); drawModel(); routeLayer.clearLayers(); applyLayers();
+  applyBasemap(); drawModel(); routeLayer.clearLayers();
   const links = model.edges.filter((e) => e.kind === 'link').length;
   const lidarN = heights ? model.buildings.filter((b) => b.heightSource === 'lidar').length : 0;
   const src = sourceNote ?? (osm._source ? `from ${osm._source} in ${osm._seconds} s` : 'from the bundled extract');
@@ -1129,24 +1143,28 @@ function start(osm: OsmData, sourceNote?: string) {
   const now = new Date();
   const dateInp = $('date') as HTMLInputElement;
   if (!dateInp.value) {
-    dateInp.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    dateInp.value = todayISO();
     ($('time') as HTMLInputElement).value = String((Math.round((now.getHours() * 60 + now.getMinutes()) / 15) * 15) % 1440);
   }
+  // only now that the clock is set, since a layer switch can redraw
+  applyLayers();
   readHash();
   update();
 }
 
 async function boot(forceOverpass = false) {
   void loadWeather(CAMPUS.lat, CAMPUS.lon).then((state) => { wx = state; if (model) update(); });
+  let osmData: OsmData | null = null;
   try {
     if (!heights)
       heights = await fetch('./campus-heights.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    if (!forceOverpass) {
-      const bundled = await loadBundledData(DATA_URL);
-      if (bundled) { start(bundled); return; }
-    }
-    start(await loadOverpass(BBOX, (msg) => setStatus(esc(msg).replace(/\n/g, '<br><small>') + (msg.includes('\n') ? '</small>' : ''))));
-  } catch (e) { showError(e); }
+    let data: OsmData | null = forceOverpass ? null : await loadBundledData(DATA_URL);
+    if (!data)
+      data = await loadOverpass(BBOX, (msg) => setStatus(esc(msg).replace(/\n/g, '<br><small>') + (msg.includes('\n') ? '</small>' : '')));
+    osmData = data;
+  } catch (e) { showError(e); return; }
+  // drawing failures are a separate problem from fetching failures
+  try { start(osmData!); } catch (e) { showFatal(e); }
 }
 void boot();
 
