@@ -906,9 +906,28 @@ function paintRoute(ctx: RouteContext, alt: Edge[] | null) {
     }
   for (const run of remainingRuns(shownLegs, doneAlong)) {
     const A = ll(run.a), B = ll(run.b);
-    const color = run.e.kind === 'outdoor' ? sunColor(ctx.sunFrac[run.e.id]) : '#8E6F3E';
+    const shelter = run.e.kind === 'link' && (run.e.linkKind === 'subwalk' || run.e.linkKind === 'skywalk');
+    const color = run.e.kind === 'outdoor' ? sunColor(ctx.sunFrac[run.e.id]) : shelter ? '#6F5A2E' : '#8E6F3E';
     L.polyline([A, B], { pane: 'routes', color: '#FCFBF7', weight: 9, opacity: 0.9 }).addTo(routeLayer);
-    L.polyline([A, B], { pane: 'routes', color, weight: 5, opacity: 1, dashArray: run.e.kind === 'outdoor' ? undefined : '1 8', lineCap: 'round' }).addTo(routeLayer);
+    L.polyline([A, B], {
+      pane: 'routes', color, weight: 5, opacity: 1, lineCap: 'round',
+      dashArray: run.e.kind === 'outdoor' ? undefined : shelter ? '2 7' : '1 8',
+    }).addTo(routeLayer);
+    // A dashed line alone does not say "you go underground here", so the
+    // maneuver's own icon rides the segment it belongs to.
+    if (shelter) {
+      const under = run.e.linkKind === 'subwalk';
+      const mid: [number, number] = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+      const label = `${under ? 'Tunnel' : 'Skywalk'}${run.e.bldA && run.e.bldB ? `: ${model.byId[run.e.bldA].abbr} – ${model.byId[run.e.bldB].abbr}` : ''}`;
+      L.marker(mid, {
+        pane: 'routes', interactive: true, keyboard: false,
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="tbadge">${icon(under ? 'tunnel' : 'bridge', 16)}</div>`,
+          iconSize: [28, 28], iconAnchor: [14, 14],
+        }),
+      }).addTo(routeLayer).bindTooltip(label, { direction: 'top', offset: [0, -12], className: 'st' });
+    }
   }
 }
 

@@ -200,6 +200,10 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
 #search.mini .brandline,#search.mini .fields,#search.mini .quick{display:none}
 #search.mini #minibar{display:flex}
 
+/* the tunnel or skywalk badge sitting on that stretch of the route */
+.tbadge{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  background:var(--panel);color:#6F5A2E;border:2px solid #6F5A2E;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
 /* while a slider drag is still settling, the shown routes are one step stale */
 body.recalc #routes,body.recalc #navmain{opacity:.5;transition:opacity .1s}
 
