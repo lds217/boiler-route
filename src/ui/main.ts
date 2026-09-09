@@ -106,6 +106,7 @@ const pinLayer = L.layerGroup().addTo(map);
 L.rectangle([[BBOX[0], BBOX[1]], [BBOX[2], BBOX[3]]], { color: '#555960', weight: 1, dashArray: '4 6', fill: false, interactive: false }).addTo(map);
 const bldShapes: Record<string, L.Polygon> = {};
 const treeLayer = L.layerGroup().addTo(map);
+const tunnelLayer = L.layerGroup().addTo(map);
 /** Permanent tooltips are DOM nodes Leaflet repositions on every move, so they
     are bound only at the zooms that show them. */
 let namedPolys: { poly: L.Polygon; abbr: string; id: string }[] = [];
@@ -212,7 +213,7 @@ function multiRings(rings: XY[][]): [number, number][][][] {
 
 function drawModel() {
   if (!model) return;
-  bldLayer.clearLayers(); treeLayer.clearLayers(); netLayer.clearLayers();
+  bldLayer.clearLayers(); treeLayer.clearLayers(); tunnelLayer.clearLayers(); netLayer.clearLayers();
   netBuilt = false; namedPolys = []; labelsBound = false;
   for (const b of model.buildings) {
     // Off-campus buildings are scenery: muted, unlabeled, clicks fall through to the map.
@@ -223,6 +224,20 @@ function drawModel() {
     if (b.campus) poly.on('click', () => { if (b.named) askPlace({ kind: 'building', id: b.id, label: `${b.abbr}  ${b.name}` }, ll(b.c)); });
     bldShapes[b.id] = poly;
   }
+  // Tunnels and skywalks are invisible on any basemap, so draw the network
+  // itself: a dashed line you can see before a route ever uses it.
+  for (const e of model.edges) {
+    if (e.kind !== 'link' || (e.linkKind !== 'subwalk' && e.linkKind !== 'skywalk')) continue;
+    const A = ll(model.nodes[e.a]), B = ll(model.nodes[e.b]);
+    const under = e.linkKind === 'subwalk';
+    L.polyline([A, B], {
+      pane: 'net', color: under ? '#6F5A2E' : '#8E6F3E', weight: 3,
+      opacity: under ? 0.55 : 0.7, dashArray: under ? '2 7' : '9 5', lineCap: 'round',
+    }).addTo(tunnelLayer).bindTooltip(
+      `${under ? 'Tunnel' : 'Skywalk'}${e.bldA && e.bldB ? `: ${model.byId[e.bldA].abbr} – ${model.byId[e.bldB].abbr}` : ''}${e.verified === false ? ' (unverified)' : ''}`,
+      { sticky: true, className: 'st' });
+  }
+
   // Thousands of separate circle layers made panning crawl on a phone; one
   // multipolygon is a single canvas path and overlaps read as one flat tone.
   if (model.trees.length)

@@ -109,6 +109,7 @@
         <li><b>Basemap:</b> OSM raster tiles by default. Switch to <b>Built-in</b> to draw the map from the bundled extract instead: no tile server, so it keeps working offline.</li>
         <li><b>Cutting through buildings:</b> on by default. Switch it off to stay outdoors except for leaving your start and entering your destination.</li>
         <li><b>Assumed:</b> height = levels × 3.5 m, else 12 m. Trees 10 m. Canopy over 35 m is discarded as lidar noise. Hours 7 am to 10 pm unless OSM has opening_hours (simple weekday rules are parsed).</li>
+        <li><b>Tunnels and skywalks:</b> drawn on the map as a dashed line whether or not your route uses one, with a tooltip naming the two buildings. They are shelter rather than shortcuts, so routing only takes one when the weather is actually severe: at or below freezing, in full sun from the mid 80s, or in steady rain. A step through one shows a tunnel arch icon and says which buildings it joins.</li>
         <li><b>Not in OSM:</b> Purdue's skywalks and tunnels. Four tunnel links (Stewart–Union, Union–Union Club, Krannert–Hawkins, Krannert–Young) are traced from Purdue's printed tunnel diagram into <b>campus-overrides.json</b> and marked unverified, so a route using one says so. The rest of that network runs east of Grant Street, outside this map. Correct or confirm them after walking them.</li>
       </ul>
     </div>

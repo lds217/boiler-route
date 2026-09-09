@@ -69,6 +69,16 @@ export const RAIN_STRESS_MAX = 2;
 export const RAIN_SATURATION_MM = 2.5; // mm/h at which the rain penalty is at full strength
 
 /**
+ * Tunnels and skywalks are shelter, not shortcuts: they only open when the
+ * weather is bad enough to be worth going underground for. Severity is judged
+ * on the worse of standing in the shade and standing in full sun, because a
+ * freezing day is not made mild by sunshine and a hot one is not made mild by
+ * shade. 1.8 on the stress scale is about -2 C in the shade or 34 C in the sun.
+ */
+export const SEVERE_STRESS = 1.8;
+export const SEVERE_PRECIP_MM = 1;
+
+/**
  * Street carriageways. Routes are never sent along one: they are here so a
  * footway drawn across them can be detected as a crossing and priced. Everything
  * else (service roads, parking aisles, living streets) is walkable shared space.

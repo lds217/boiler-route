@@ -25,6 +25,7 @@ const PATHS: Record<string, string> = {
   exit: '<path d="M13.6 3.5H6.2a.7.7 0 0 0-.7.7v15.6a.7.7 0 0 0 .7.7h7.4"/><path d="M11 12h9.5"/><path d="m16.8 7.8 4.2 4.2-4.2 4.2"/>',
   arrive: '<path d="M12 20.8c0 0 6.6-6.2 6.6-11a6.6 6.6 0 1 0-13.2 0c0 4.8 6.6 11 6.6 11z"/><circle cx="12" cy="9.6" r="2.4"/>',
   through: '<path d="M4.5 20V8.2L12 4l7.5 4.2V20"/><path d="M3.2 20h17.6"/><path d="M9 20v-5.4h6V20"/>',
+  tunnel: '<path d="M2.6 20.4V12a9.4 9.4 0 0 1 18.8 0v8.4"/><path d="M8.2 20.4V12a3.8 3.8 0 0 1 7.6 0v8.4"/>',
   bridge: '<path d="M3 16.2h18"/><path d="M6.6 16.2V9.4M17.4 16.2V9.4"/><path d="M3 9.4c4.2-2.9 13.8-2.9 18 0"/>',
 };
 

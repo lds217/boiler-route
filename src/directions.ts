@@ -91,8 +91,10 @@ export function directions(model: Model, path: Edge[], srcNode: string, ctx: Rou
       return { icon: 'in', maneuver, text, sub, m, at: s.start };
     }
     const ab = s.to ? model.byId[s.to].abbr : null;
+    // students call a subwalk a tunnel; skywalk keeps its own name
+    const what = s.kind === 'subwalk' ? 'tunnel' : s.kind;
     return {
-      icon: 'in', maneuver: 'link', text: `Take the ${s.kind}${ab ? ' to ' + ab : ''}`,
+      icon: 'in', maneuver: s.kind === 'subwalk' ? 'tunnel' : 'link', text: `Take the ${what}${ab ? ' to ' + ab : ''}`,
       sub: s.verified === false ? 'not verified on foot' : '', m, at: s.start,
     };
   });

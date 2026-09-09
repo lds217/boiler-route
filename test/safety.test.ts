@@ -158,3 +158,47 @@ describe('cutting through buildings', () => {
     expect(usesBuilding(path!, three.id)).toBe(true);
   });
 });
+
+describe('tunnels are shelter, not shortcuts', () => {
+  /** Two halls far apart, joined by a long way round and a direct tunnel. */
+  function tunnelPair() {
+    const f = fake2();
+    return f.model({
+      overrides: {
+        manualLinks: [{ a: 'One Hall', b: 'Three Hall', kind: 'subwalk', verified: false }],
+      },
+    });
+  }
+  const usesTunnel = (path: Edge[]) => path.some((e) => e.linkKind === 'subwalk');
+
+  it('stays shut on a pleasant day', () => {
+    const mild = route(tunnelPair(), 'ONE', 'THREE', { tempF: 70, w: 0.7, cloud: 40 });
+    expect(mild.ctx.severe).toBe(false);
+    expect(usesTunnel(mild.path!)).toBe(false);
+  });
+
+  it('opens in hard cold', () => {
+    const cold = route(tunnelPair(), 'ONE', 'THREE', { tempF: 20, wind: 'windy', w: 0.7 });
+    expect(cold.ctx.severe).toBe(true);
+    expect(usesTunnel(cold.path!)).toBe(true);
+  });
+
+  it('opens in baking sun and in steady rain', () => {
+    const hot = route(tunnelPair(), 'ONE', 'THREE', { tempF: 96, w: 0.7 });
+    expect(hot.ctx.severe).toBe(true);
+    expect(usesTunnel(hot.path!)).toBe(true);
+    const wet = route(tunnelPair(), 'ONE', 'THREE', { tempF: 62, w: 0.7, cloud: 100, precipMm: 5 });
+    expect(wet.ctx.severe).toBe(true);
+    expect(usesTunnel(wet.path!)).toBe(true);
+  });
+
+  it('says tunnel, not subwalk, and carries its own arrow', async () => {
+    const { directions } = await import('../src/directions');
+    const m = tunnelPair();
+    const cold = route(m, 'ONE', 'THREE', { tempF: 20, wind: 'windy', w: 0.7 });
+    const step = directions(m, cold.path!, cold.src, cold.ctx).find((s) => s.maneuver === 'tunnel')!;
+    expect(step).toBeDefined();
+    expect(step.text).toBe('Take the tunnel to THREE');
+    expect(step.sub).toBe('not verified on foot');
+  });
+});

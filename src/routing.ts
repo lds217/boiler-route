@@ -1,6 +1,6 @@
 import {
   CROSS_RISK_SEC, ICE_STEPS_FACTOR, ICE_TEMP_C, INDOOR_FACTOR, JAYWALK_RISK_FACTOR, NIGHT_CROSS_RISK_FACTOR,
-  NIGHT_LIT_FACTOR, SEC, STEPS_FACTOR, WALK_SPEED,
+  NIGHT_LIT_FACTOR, SEC, SEVERE_PRECIP_MM, SEVERE_STRESS, STEPS_FACTOR, WALK_SPEED,
 } from './constants';
 import { feelsLike, INDOOR_C, rainStress, stress } from './comfort';
 import type { Edge, Model, RouteContext, RouteSummary, SunPosition, Wind } from './types';
@@ -46,6 +46,8 @@ export function edgeCost(e: Edge, ctx: RouteContext, u: string): number {
   if (ctx.stepFree && (e.steps || e.stepFree === false)) return Infinity;
   if (ctx.noJaywalk && e.crossing && e.crossing.type === 'jaywalk') return Infinity;
   if (e.kind !== 'outdoor') {
+    // shelter routes stay shut in ordinary weather
+    if (e.kind === 'link' && (e.linkKind === 'subwalk' || e.linkKind === 'skywalk') && !ctx.severe) return Infinity;
     const blds = e.kind === 'indoor' ? [e.bld] : [e.bldA, e.bldB].filter(Boolean);
     if (blds.some((id) => id && !ctx.open[id])) return Infinity;
     // "no cutting through": indoors is only for the buildings you start or end in
@@ -187,6 +189,12 @@ export function buildContext(model: Model, inp: ContextInputs): RouteContext {
       feels[e.id] = feelsLike(inp.tempC, inp.sunFrac[e.id], inp.sun.alt, inp.wind, inp.cloudPct);
       st[e.id] = stress(feels[e.id]) + (e.covered ? 0 : rain);
     }
+  // How bad it actually gets outside, which decides whether a tunnel is worth
+  // taking. Stress is U-shaped, so the worse of shade and full sun picks the
+  // cold end in winter and the hot end in summer on its own.
+  const inShade = stress(feelsLike(inp.tempC, 0, inp.sun.alt, inp.wind, inp.cloudPct));
+  const inSun = stress(feelsLike(inp.tempC, 1, inp.sun.alt, inp.wind, inp.cloudPct));
+  const severe = Math.max(inShade, inSun) >= SEVERE_STRESS || (inp.precipMm ?? 0) >= SEVERE_PRECIP_MM;
   const indoorStress: Record<string, number> = {};
   const defaultIndoorStress = stress(INDOOR_C);
   for (const b of model.buildings) {
@@ -200,6 +208,6 @@ export function buildContext(model: Model, inp: ContextInputs): RouteContext {
     open: inp.open, hot: inp.tempC >= 18, tC: inp.tempC,
     stepFree: inp.stepFree, noJaywalk: inp.noJaywalk, mins: inp.mins,
     night: inp.sun.alt <= 0, icy: inp.tempC <= ICE_TEMP_C, precipMm: inp.precipMm ?? 0,
-    noCutThrough: inp.noCutThrough ?? false, throughOk: new Set(inp.throughOk ?? []),
+    noCutThrough: inp.noCutThrough ?? false, throughOk: new Set(inp.throughOk ?? []), severe,
   };
 }

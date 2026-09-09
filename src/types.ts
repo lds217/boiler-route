@@ -195,6 +195,8 @@ export interface RouteContext {
   /** Indoor and link edges are barred except for the buildings in throughOk. */
   noCutThrough: boolean;
   throughOk: Set<string>;
+  /** Weather bad enough that tunnels and skywalks are worth using. */
+  severe: boolean;
 }
 
 export interface RouteSummary {
@@ -216,7 +218,7 @@ export interface RouteSummary {
   majorCrossings: number;
 }
 
-export type Maneuver = 'start' | 'straight' | 'left' | 'right' | 'uturn' | 'cross' | 'exit' | 'arrive' | 'through' | 'link';
+export type Maneuver = 'start' | 'straight' | 'left' | 'right' | 'uturn' | 'cross' | 'exit' | 'arrive' | 'through' | 'link' | 'tunnel';
 
 export interface DirectionStep {
   icon: 'su' | 'sh' | 'mx' | 'in';
