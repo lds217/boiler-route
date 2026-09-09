@@ -6,28 +6,63 @@
       "b": "Purdue Student Union",
       "kind": "subwalk",
       "verified": false,
-      "note": "Purdue underground tunnel system; traced from the printed diagram, not walked"
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked"
+    },
+    {
+      "a": "Stewart Center",
+      "b": "Hicks Undergraduate Library",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked"
     },
     {
       "a": "Purdue Student Union",
       "b": "Union Club Hotel",
       "kind": "subwalk",
       "verified": false,
-      "note": "Purdue underground tunnel system; traced from the printed diagram, not walked"
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked (shown on the diagram, not in the listed set)"
+    },
+    {
+      "a": "Purdue Student Union",
+      "b": "Grant Street Parking Garage",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked"
+    },
+    {
+      "a": "Purdue Student Union",
+      "b": "Krannert School of Management",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked"
+    },
+    {
+      "a": "Purdue Student Union",
+      "b": "Rawls Hall",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked"
+    },
+    {
+      "a": "Krannert School of Management",
+      "b": "Rawls Hall",
+      "kind": "subwalk",
+      "verified": false,
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked"
     },
     {
       "a": "Krannert School of Management",
       "b": "Hawkins Hall",
       "kind": "subwalk",
       "verified": false,
-      "note": "Tunnel diagram routes this via Krannert Center, which OSM maps as one building with Krannert; not walked"
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked"
     },
     {
       "a": "Krannert School of Management",
       "b": "Young Hall",
       "kind": "subwalk",
       "verified": false,
-      "note": "Diagram shows Young Graduate House on the Krannert side of the network; assumed to be Ernest C. Young Hall, not walked"
+      "note": "Purdue underground tunnel system, from the printed tunnel diagram; not walked"
     }
   ],
   "buildings": {}

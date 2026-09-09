@@ -57,7 +57,10 @@ export function directions(model: Model, path: Edge[], srcNode: string, ctx: Rou
       };
     } else {
       flush();
-      g = { type: 'link', kind: e.linkKind ?? null, len: e.len, start: A, to: e.bldB || null, verified: e.verified };
+      // name the building you are heading into, which depends on which way the
+      // link is being walked, not on which end the edge happens to be stored as
+      const linkTo = (to === e.b ? e.bldB : e.bldA) || e.bldB || null;
+      g = { type: 'link', kind: e.linkKind ?? null, len: e.len, start: A, to: linkTo, verified: e.verified };
     }
   }
   flush();

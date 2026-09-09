@@ -1,7 +1,8 @@
-/** Study area (south, west, north, east), set to the streets that bound campus:
- *  Harrison Street south, North Grant Street east, North Martin Jischke Drive
- *  west, Stadium Avenue north. Widen freely; everything scales. */
-export const BBOX: [number, number, number, number] = [40.4200, -86.9226, 40.4302, -86.9103];
+/** Study area (south, west, north, east): Harrison Street south, North Martin
+ *  Jischke Drive west, Stadium Avenue north. The east edge reaches ~150 m past
+ *  North Grant Street to take in Rawls Hall and the Grant Street and Wood Street
+ *  garages, which the tunnel network connects. Widen freely; everything scales. */
+export const BBOX: [number, number, number, number] = [40.4200, -86.9226, 40.4302, -86.9085];
 
 export const WALK_SPEED = 1.35; // m/s, typical campus pace
 export const INDOOR_FACTOR = 1.2; // doors, people, stairs

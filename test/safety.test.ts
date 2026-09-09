@@ -202,3 +202,19 @@ describe('tunnels are shelter, not shortcuts', () => {
     expect(step.sub).toBe('not verified on foot');
   });
 });
+
+describe('a link names where it takes you', () => {
+  it('names the far building whichever way it is walked', async () => {
+    const { directions } = await import('../src/directions');
+    const m = fake2().model({
+      overrides: { manualLinks: [{ a: 'One Hall', b: 'Three Hall', kind: 'subwalk', verified: false }] },
+    });
+    const one = bld(m, 'ONE'), three = bld(m, 'THREE');
+    const there = route(m, 'ONE', 'THREE', { tempF: 20, wind: 'windy', w: 0.7 });
+    const back = route(m, 'THREE', 'ONE', { tempF: 20, wind: 'windy', w: 0.7 });
+    const step = (r: typeof there, src: string) =>
+      directions(m, r.path!, src, r.ctx).find((s) => s.maneuver === 'tunnel')!;
+    expect(step(there, one.id + ':hub').text).toBe('Take the tunnel to THREE');
+    expect(step(back, three.id + ':hub').text).toBe('Take the tunnel to ONE');
+  });
+});
