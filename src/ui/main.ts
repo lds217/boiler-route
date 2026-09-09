@@ -72,6 +72,7 @@ map.createPane('label').style.zIndex = '344';
 map.createPane('shadow').style.zIndex = '350';
 map.createPane('net').style.zIndex = '360';
 map.createPane('routes').style.zIndex = '450';
+map.createPane('gps').style.zIndex = '500'; // your own position sits above every drawn layer
 // The vectors are OSM data, so attribution stays visible whatever the basemap.
 // On GitHub Pages the repo is in the URL, so the issue link needs no configuring.
 const issuesUrl = (): string | null => {
@@ -411,8 +412,8 @@ function showFix(lat: number, lon: number, acc: number) {
   lastFix = { lat, lon };
   try { localStorage.setItem('geoOk', '1'); } catch { /* private mode */ }
   if (!locDot) {
-    locRing = L.circle([lat, lon], { radius: acc, color: '#1F5FBF', weight: 1, opacity: 0.4, fillColor: '#1F5FBF', fillOpacity: 0.08, interactive: false }).addTo(map);
-    locDot = L.circleMarker([lat, lon], { pane: 'routes', radius: 7, color: '#fff', weight: 2.5, fillColor: '#1F5FBF', fillOpacity: 1, interactive: false }).addTo(map);
+    locRing = L.circle([lat, lon], { pane: 'gps', radius: acc, color: '#1F5FBF', weight: 1, opacity: 0.4, fillColor: '#1F5FBF', fillOpacity: 0.08, interactive: false }).addTo(map);
+    locDot = L.circleMarker([lat, lon], { pane: 'gps', radius: 7, color: '#fff', weight: 2.5, fillColor: '#1F5FBF', fillOpacity: 1, interactive: false }).addTo(map);
   } else {
     locDot.setLatLng([lat, lon]);
     locRing!.setLatLng([lat, lon]).setRadius(acc);

@@ -180,7 +180,7 @@ ul.data{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}ul.da
   .handle{display:none}
 }
 
-#locbtn{position:fixed;right:12px;bottom:calc(98px + env(safe-area-inset-bottom));z-index:5;width:44px;height:44px;border-radius:50%;
+#locbtn{position:fixed;right:12px;bottom:calc(98px + env(safe-area-inset-bottom));z-index:10;width:44px;height:44px;border-radius:50%;
   background:rgba(252,251,247,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   border:1px solid var(--line);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer;color:var(--aged)}
 #locbtn:active{background:var(--soft)}
