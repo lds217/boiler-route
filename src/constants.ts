@@ -16,6 +16,8 @@ export const GAP_CLOSE = 4; // m: dangling path ends this close to another path 
 export const DOOR_CONNECT = 30; // m: max connector from an isolated door to the path network
 export const PIN_CONNECT = 60; // m: beyond this, "no mapped path near"
 export const DEFAULT_HOURS: [number, number] = [7, 22];
+/** Campus wall clock. The date and time controls mean this zone, not the device's. */
+export const CAMPUS_TZ = 'America/Indiana/Indianapolis';
 export const DEFAULT_BUILDING_HEIGHT = 12; // m
 export const LEVEL_HEIGHT = 3.5; // m per building:level
 export const DEFAULT_TREE_HEIGHT = 10; // m

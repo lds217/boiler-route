@@ -9,7 +9,8 @@ import './style.css';
 import campusOverrides from '../../campus-overrides.json';
 import { extractBasemap, type Basemap } from '../basemap';
 import { CLOUD_CUT, cToF, fToC, SUN_MAX_C, windClass } from '../comfort';
-import { BBOX, overpassQuery, PIN_CONNECT } from '../constants';
+import { campusClock, campusInstant, weekdayOf } from '../campustime';
+import { BBOX, CAMPUS_TZ, overpassQuery, PIN_CONNECT } from '../constants';
 import { diagnose, routeNode } from '../diagnose';
 import { directions } from '../directions';
 import { compassShort, createProjection } from '../geometry';
@@ -63,10 +64,7 @@ const sunColor = (f: number) => {
   return `rgb(${c1.map((v, i) => Math.round(lerp(v, c2[i], f))).join(',')})`;
 };
 const ll = (p: { x: number; y: number }): [number, number] => proj.ll(p);
-const todayISO = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const todayISO = (): string => campusClock().dateStr;
 const units = (): Units => (($('units') as HTMLSelectElement)?.value === 'metric' ? 'metric' : 'imperial');
 const dist = (m: number) => fmtDist(m, units());
 
@@ -844,7 +842,7 @@ function conditions(): { tempF: number; wind: Wind; cloud: number; precipMm: num
     ($('wind') as HTMLSelectElement).value = windClass(w.mph);
     nearestOption($('cloud') as HTMLSelectElement, w.cloud);
     nearestOption($('precip') as HTMLSelectElement, w.precipMm);
-    $('wx').innerHTML = `Live for ${fmtClock(mins)}: <b>${Math.round(w.tempF)} °F</b>, wind ${Math.round(w.mph)} mph, ${Math.round(w.cloud)}% cloud${w.precipMm > 0 ? `, ${w.precipMm.toFixed(1)} mm/h rain` : ''} <small>(Open-Meteo, fetched ${wx.fetchedAt!.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})</small>`;
+    $('wx').innerHTML = `Live for ${fmtClock(mins)}: <b>${Math.round(w.tempF)} °F</b>, wind ${Math.round(w.mph)} mph, ${Math.round(w.cloud)}% cloud${w.precipMm > 0 ? `, ${w.precipMm.toFixed(1)} mm/h rain` : ''} <small>(Open-Meteo, fetched ${wx.fetchedAt!.toLocaleTimeString([], { timeZone: CAMPUS_TZ, hour: 'numeric', minute: '2-digit' })})</small>`;
     return { tempF: w.tempF, wind: windClass(w.mph), cloud: w.cloud, precipMm: w.precipMm };
   }
   if (!manual) $('wx').innerHTML = wx.ok
@@ -904,9 +902,9 @@ function update() {
   const tempF = cond.tempF;
   updateLabels();
   const dateStr = ($('date') as HTMLInputElement).value || todayISO();
-  const date = new Date(dateStr + 'T00:00:00');
+  // the controls are campus wall-clock time, wherever the device is
+  const date = campusInstant(dateStr, mins);
   if (Number.isNaN(date.getTime())) return; // half-typed date: wait for a real one
-  date.setMinutes(mins);
   const shadeKey = `${dateStr}|${mins}`;
   const { sun, sunFrac, shadows } = shadeAt(date, shadeKey);
   const sunAddF = Math.round(SUN_MAX_C * Math.max(0, Math.sin(sun.alt)) * (1 - (CLOUD_CUT * cond.cloud) / 100) * 9 / 5);
@@ -935,7 +933,7 @@ function update() {
     }
   }
 
-  const open = computeOpen(model.buildings, date.getDay(), mins / 60);
+  const open = computeOpen(model.buildings, weekdayOf(dateStr), mins / 60);
   // Open/closed styling also only changes with the clock.
   if (openKey !== shadeKey) {
     openKey = shadeKey;
@@ -1116,7 +1114,7 @@ function renderRoutes() {
 /* ================= boot ================= */
 function start(osm: OsmData, sourceNote?: string) {
   rawOsm = osm;
-  model = buildModel(osm, proj, { weekday: new Date().getDay(), overrides, heights });
+  model = buildModel(osm, proj, { weekday: campusClock().weekday, overrides, heights });
   basemap = extractBasemap(osm, proj);
   const named = model.buildings.filter((b) => b.named && b.campus);
   if (named.length < 2) { showError(new Error('fewer than two named campus buildings in this block')); return; }
@@ -1140,11 +1138,11 @@ function start(osm: OsmData, sourceNote?: string) {
   $('saveosm').onclick = saveOsm;
   loadFile($<HTMLInputElement>('jsonfile2'));
   ($('planner') as HTMLElement).hidden = false;
-  const now = new Date();
+  const now = campusClock();
   const dateInp = $('date') as HTMLInputElement;
   if (!dateInp.value) {
-    dateInp.value = todayISO();
-    ($('time') as HTMLInputElement).value = String((Math.round((now.getHours() * 60 + now.getMinutes()) / 15) * 15) % 1440);
+    dateInp.value = now.dateStr;
+    ($('time') as HTMLInputElement).value = String((Math.round(now.mins / 15) * 15) % 1440);
   }
   // only now that the clock is set, since a layer switch can redraw
   applyLayers();

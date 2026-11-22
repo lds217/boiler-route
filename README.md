@@ -16,7 +16,7 @@ refresh + Pages deploy.
 npm install
 npm run update-data   # fetch the OSM extract once (CI does this weekly)
 npm run dev           # app on http://localhost:5173
-npm test              # 62 tests incl. the fake2/fake3 fixtures and a real-data smoke test
+npm test              # 114 tests incl. the fake2/fake3 fixtures and a real-data smoke test
 npm run build         # typecheck + production build to dist/
 ```
 
@@ -29,6 +29,7 @@ src/
   geometry.ts      local projection, rings, intersections, hulls, bearings
   hours.ts         opening_hours parser + per-weekday open computation
   sun.ts           low-precision solar position
+  campustime.ts    campus wall clock (America/Indiana/Indianapolis) <-> real instants
   comfort.ts       UTCI-band stress + feels-like model (§7, sources inline)
   shade.ts         per-edge sun fraction + drawable shadow hulls (§6)
   osm/parse.ts     element indexing, buildings (incl. relations), trees, door tags
@@ -99,7 +100,9 @@ cheapest path.
 
 ### Sun position over time
 
-The date picker and time slider become a `Date`, which `sunPosition`
+The date picker and time slider mean the campus wall clock
+(America/Indiana/Indianapolis), whatever zone the device is in. `campusInstant`
+(`src/campustime.ts`) turns them into a real instant, which `sunPosition`
 (`src/sun.ts`) turns into altitude and bearing with the standard low-precision
 formula (the same maths as suncalc):
 
@@ -114,7 +117,7 @@ formula (the same maths as suncalc):
 | `alt = asin(sin φ sin δ + cos φ cos δ cos H)` | altitude above the horizon |
 | `atan2(sin H, cos H sin φ − tan δ cos φ) + π` | compass bearing, 0 = north |
 
-Sample output for campus (φ ≈ 40.4°), local time:
+Sample output for campus (φ ≈ 40.4°), campus time:
 
 | Time | Altitude | Bearing | Shadow of a 12 m building | Sun heat added |
 |---|---|---|---|---|
@@ -156,9 +159,8 @@ clock.
 
 - No atmospheric refraction: near the horizon the real sun sits about 0.5°
   higher, so "night" starts a few minutes before the visible sunset.
-- The time slider is read in the **browser's** time zone, not campus time
-  (America/Indiana/Indianapolis). On a device set to another zone, the sun and
-  shadows are off by the difference.
+- On the spring-forward day, slider times from 02:00 to 02:45 do not exist on
+  campus and are read as the hour after (02:30 becomes 03:30 EDT).
 
 ## Data and policies
 
